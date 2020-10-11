@@ -42,24 +42,24 @@ struct ControlEquationHelper
   Switch( WellControls::Type const & wellType,
           WellControls::Control const & currentControl,
           real64 const & targetBHP,
-          real64 const & targetConnRate,
-          real64 const & wellElemPressure,
-          real64 const & dWellElemPressure,
-          real64 const & connRate,
-          real64 const & dConnRate,
+          real64 const & targetRate,
+          real64 const & currentBHP,
+          real64 const & currentVolRate,
           WellControls::Control & newControl )
   {
     // if isViable is true at the end of the following checks, no need to switch
     bool controlIsViable = false;
 
-    real64 const refRate = connRate + dConnRate;
-    real64 const refPressure = wellElemPressure + dWellElemPressure;
+    // The limiting flow rates are treated as upper limits, while the pressure limits
+    // are treated as lower limits in production wells and upper limits in injectors.
+    // The well changes its mode of control whenever the existing control mode would
+    // violate one of these limits.
 
     // BHP control
     if( currentControl == WellControls::Control::BHP )
     {
       // the control is viable if the reference rate is below the max rate
-      controlIsViable = ( fabs( refRate ) <= fabs( targetConnRate ) );
+      controlIsViable = ( fabs( currentVolRate ) <= fabs( targetRate ) );
     }
     else // rate control
     {
@@ -67,12 +67,12 @@ struct ControlEquationHelper
       if( wellType == WellControls::Type::PRODUCER )
       {
         // targetBHP specifies a min pressure here
-        controlIsViable = ( refPressure >= targetBHP );
+        controlIsViable = ( currentBHP >= targetBHP );
       }
       else
       {
         // targetBHP specifies a max pressure here
-        controlIsViable = ( refPressure <= targetBHP );
+        controlIsViable = ( currentBHP <= targetBHP );
       }
     }
 
@@ -82,8 +82,10 @@ struct ControlEquationHelper
     }
     else
     {
+      // Note: if BHP control is not viable, we switch to TOTALVOLRATE
+      //       if TOTALVOLRATE are not viable, we switch to BHP
       newControl = ( currentControl == WellControls::Control::BHP )
-                 ? WellControls::Control::LIQUIDRATE
+                 ? WellControls::Control::TOTALVOLRATE
                  : WellControls::Control::BHP;
     }
   }
@@ -93,59 +95,61 @@ struct ControlEquationHelper
   Compute( globalIndex const rankOffset,
            WellControls::Control const currentControl,
            real64 const & targetBHP,
-           real64 const & targetConnRate,
+           real64 const & targetRate,
+           real64 const & currentBHP,
+           real64 const & dCurrentBHP_dPres,
+           real64 const & currentVolRate,
+           real64 const & dCurrentVolRate_dPres,
+           real64 const & dCurrentVolRate_dRate,
            globalIndex const wellElemDofNumber,
-           real64 const & wellElemPressure,
-           real64 const & dWellElemPressure,
-           real64 const & connRate,
-           real64 const & dConnRate,
            CRSMatrixView< real64, globalIndex const > const & localMatrix,
            arrayView1d< real64 > const & localRhs )
   {
-    globalIndex eqnRowIndex = 0;
-    globalIndex dofColIndex = 0;
+    localIndex const eqnRowIndex = wellElemDofNumber + SinglePhaseWell::RowOffset::CONTROL - rankOffset;
+    globalIndex const presDofColIndex = wellElemDofNumber + SinglePhaseWell::ColOffset::DPRES;
+    globalIndex const rateDofColIndex = wellElemDofNumber + SinglePhaseWell::ColOffset::DRATE;
+
     real64 controlEqn = 0;
-    real64 dControlEqn_dX = 0;
+    real64 dControlEqn_dRate = 0;
+    real64 dControlEqn_dPres = 0;
+
+    // Note: We assume in the computation of currentBHP that the reference elevation
+    //       is in the top well element. This is enforced by a check in the solver.
+    //       If we wanted to allow the reference elevation to be outside the top
+    //       well element, it would make more sense to check the BHP constraint in
+    //       the well element that contains the reference elevation.
 
     // BHP control
     if( currentControl == WellControls::Control::BHP )
     {
-      // get pressures and compute normalizer
-      real64 const currentBHP = wellElemPressure + dWellElemPressure;
-      real64 const normalizer = targetBHP > 1e-13
-                                ? 1.0 / targetBHP
-                                : 1.0;
-
-      // control equation is a normalized difference between current pressure and target pressure
-      controlEqn = ( currentBHP - targetBHP ) * normalizer;
-      dControlEqn_dX = normalizer;
-      dofColIndex = wellElemDofNumber + SinglePhaseWell::ColOffset::DPRES;
-      eqnRowIndex = wellElemDofNumber + SinglePhaseWell::RowOffset::CONTROL - rankOffset;
+      // control equation is a difference between current BHP and target BHP
+      controlEqn = currentBHP - targetBHP;
+      dControlEqn_dPres = dCurrentBHP_dPres;
     }
-    // rate control
+    // Total volumetric rate control
+    else if( currentControl == WellControls::Control::TOTALVOLRATE )
+    {
+      // control equation is the difference between volumetric current rate and target rate
+      controlEqn = currentVolRate - targetRate;
+      dControlEqn_dRate = dCurrentVolRate_dRate;
+      dControlEqn_dPres = dCurrentVolRate_dPres;
+    }
     else
     {
-
-      // get rates and compute normalizer
-      real64 const currentConnRate = connRate + dConnRate;
-      real64 const normalizer = fabs( targetConnRate ) > 1e-13
-                                ? 1.0 / ( 1e-2 * fabs( targetConnRate ) ) // hard-coded value comes from AD-GPRS
-                                : 1.0;
-
-      // for a producer, the actual (target) rate is negative
-
-      // control equation is a normalized difference between current rate and target rate
-      controlEqn = ( currentConnRate - targetConnRate ) * normalizer;
-      dControlEqn_dX = normalizer;
-      dofColIndex = wellElemDofNumber + SinglePhaseWell::ColOffset::DRATE;
-      eqnRowIndex = wellElemDofNumber + SinglePhaseWell::RowOffset::CONTROL - rankOffset;
+      GEOSX_ERROR_IF( ( currentControl != WellControls::Control::BHP )
+                      && ( currentControl != WellControls::Control::TOTALVOLRATE ),
+                      "This constraint is not supported in SinglePhaseWell" );
     }
 
-    localMatrix.addToRow< serialAtomic >( eqnRowIndex,
-                                          &dofColIndex,
-                                          &dControlEqn_dX,
-                                          1 );
     localRhs[eqnRowIndex] += controlEqn;
+    localMatrix.addToRow< serialAtomic >( eqnRowIndex,
+                                          &presDofColIndex,
+                                          &dControlEqn_dPres,
+                                          1 );
+    localMatrix.addToRow< serialAtomic >( eqnRowIndex,
+                                          &rateDofColIndex,
+                                          &dControlEqn_dRate,
+                                          1 );
   }
 };
 
@@ -259,12 +263,11 @@ struct PressureRelationKernel
   Launch( localIndex const size,
           globalIndex const rankOffset,
           bool const isLocallyOwned,
+          localIndex const iwelemControl,
           WellControls const & wellControls,
           arrayView1d< globalIndex const > const & wellElemDofNumber,
           arrayView1d< real64 const > const & wellElemGravCoef,
           arrayView1d< localIndex const > const & nextWellElemIndex,
-          arrayView1d< real64 const > const & connRate,
-          arrayView1d< real64 const > const & dConnRate,
           arrayView1d< real64 const > const & wellElemPressure,
           arrayView1d< real64 const > const & dWellElemPressure,
           arrayView2d< real64 const > const & wellElemDensity,
@@ -272,11 +275,24 @@ struct PressureRelationKernel
           CRSMatrixView< real64, globalIndex const > const & localMatrix,
           arrayView1d< real64 > const & localRhs )
   {
+    // static well control data
+    WellControls::Type const wellType = wellControls.GetType();
+    WellControls::Control const currentControl = wellControls.GetControl();
     real64 const targetBHP = wellControls.GetTargetBHP();
     real64 const targetRate = wellControls.GetTargetRate();
-    WellControls::Control const currentControl = wellControls.GetControl();
-    WellControls::Type const wellType = wellControls.GetType();
-    localIndex const iwelemControl = wellControls.GetReferenceWellElementIndex();
+
+    // dynamic well control data
+    real64 const & currentBHP =
+      wellControls.getReference< real64 >( SinglePhaseWell::viewKeyStruct::currentBHPString );
+    real64 const & dCurrentBHP_dPres =
+      wellControls.getReference< real64 >( SinglePhaseWell::viewKeyStruct::dCurrentBHP_dPresString );
+
+    real64 const & currentVolRate =
+      wellControls.getReference< real64 >( SinglePhaseWell::viewKeyStruct::currentVolRateString );
+    real64 const & dCurrentVolRate_dPres =
+      wellControls.getReference< real64 >( SinglePhaseWell::viewKeyStruct::dCurrentVolRate_dPresString );
+    real64 const & dCurrentVolRate_dRate =
+      wellControls.getReference< real64 >( SinglePhaseWell::viewKeyStruct::dCurrentVolRate_dRateString );
 
     RAJA::ReduceMax< REDUCE_POLICY, localIndex > switchControl( 0 );
 
@@ -293,10 +309,8 @@ struct PressureRelationKernel
                                        currentControl,
                                        targetBHP,
                                        targetRate,
-                                       wellElemPressure[iwelemControl],
-                                       dWellElemPressure[iwelemControl],
-                                       connRate[iwelemControl],
-                                       dConnRate[iwelemControl],
+                                       currentBHP,
+                                       currentVolRate,
                                        newControl );
         if( currentControl != newControl )
         {
@@ -307,11 +321,12 @@ struct PressureRelationKernel
                                         newControl,
                                         targetBHP,
                                         targetRate,
+                                        currentBHP,
+                                        dCurrentBHP_dPres,
+                                        currentVolRate,
+                                        dCurrentVolRate_dPres,
+                                        dCurrentVolRate_dRate,
                                         wellElemDofNumber[iwelemControl],
-                                        wellElemPressure[iwelemControl],
-                                        dWellElemPressure[iwelemControl],
-                                        connRate[iwelemControl],
-                                        dConnRate[iwelemControl],
                                         localMatrix,
                                         localRhs );
       }
@@ -334,15 +349,10 @@ struct PressureRelationKernel
         real64 const pressureCurrent = wellElemPressure[iwelem] + dWellElemPressure[iwelem];
         real64 const pressureNext = wellElemPressure[iwelemNext] + dWellElemPressure[iwelemNext];
 
-        // compute a coefficient to normalize the momentum equation
-        real64 const normalizer = targetBHP > 1e-13
-                                  ? 1.0 / targetBHP
-                                  : 1.0;
-
         // compute momentum flux and derivatives
-        real64 const localPresRel = ( pressureNext - pressureCurrent - avgDensity * gravD ) * normalizer;
-        localPresRelJacobian[SinglePhaseWell::ElemTag::NEXT] = ( 1 - dAvgDensity_dPresNext * gravD ) * normalizer;
-        localPresRelJacobian[SinglePhaseWell::ElemTag::CURRENT] = ( -1 - dAvgDensity_dPresCurrent * gravD ) * normalizer;
+        real64 const localPresRel = pressureNext - pressureCurrent - avgDensity * gravD;
+        localPresRelJacobian[SinglePhaseWell::ElemTag::NEXT] = 1 - dAvgDensity_dPresNext * gravD;
+        localPresRelJacobian[SinglePhaseWell::ElemTag::CURRENT] = -1 - dAvgDensity_dPresCurrent * gravD;
 
         // TODO: add friction and acceleration terms
 
@@ -522,8 +532,6 @@ struct PresInitializationKernel
   static void
   Launch( localIndex const perforationSize,
           localIndex const subRegionSize,
-          bool const isLocallyOwned,
-          int const topRank,
           localIndex const numPerforations,
           WellControls const & wellControls,
           ElementViewConst< arrayView1d< real64 const > > const & resPressure,
@@ -535,9 +543,9 @@ struct PresInitializationKernel
           arrayView1d< real64 > const & wellElemPressure )
   {
     real64 const targetBHP = wellControls.GetTargetBHP();
+    real64 const refWellElemGravCoef = wellControls.GetReferenceGravityCoef();
     WellControls::Control const currentControl = wellControls.GetControl();
     WellControls::Type const wellType = wellControls.GetType();
-    localIndex const iwelemControl = wellControls.GetReferenceWellElementIndex();
 
     // loop over all perforations to compute an average density
     RAJA::ReduceSum< parallelDeviceReduce, real64 > sumDensity( 0 );
@@ -561,29 +569,21 @@ struct PresInitializationKernel
     real64 const avgDensity = MpiWrapper::Sum( sumDensity.get() ) / numPerforations;
 
     real64 pressureControl = 0.0;
-    real64 gravCoefControl = 0.0;
-    if( isLocallyOwned )
+    real64 const gravCoefControl = refWellElemGravCoef;
+    // initialize the reference pressure
+    if( currentControl == WellControls::Control::BHP )
     {
-      // initialize the reference pressure
-      if( currentControl == WellControls::Control::BHP )
-      {
-        // if pressure constraint, set the ref pressure at the constraint
-        pressureControl = targetBHP;
-      }
-      else // rate control
-      {
-        // if rate constraint, set the ref pressure slightly
-        // above/below the target pressure depending on well type
-        pressureControl = ( wellType == WellControls::Type::PRODUCER )
-                        ? 0.5 * pres
-                        : 2.0 * pres;
-      }
-      gravCoefControl = wellElemGravCoef[iwelemControl];
-      wellElemPressure[iwelemControl] = pressureControl;
+      // if pressure constraint, set the ref pressure at the constraint
+      pressureControl = targetBHP;
     }
-
-    MpiWrapper::Broadcast( pressureControl, topRank );
-    MpiWrapper::Broadcast( gravCoefControl, topRank );
+    else // rate control
+    {
+      // if rate constraint, set the ref pressure slightly
+      // above/below the target pressure depending on well type
+      pressureControl = ( wellType == WellControls::Type::PRODUCER )
+                      ? 0.5 * pres
+                      : 2.0 * pres;
+    }
 
     GEOSX_ERROR_IF( pressureControl <= 0, "Invalid well initialization: negative pressure was found" );
 
@@ -630,6 +630,28 @@ struct RateInitializationKernel
     } );
   }
 
+};
+
+
+/******************************** FluidUpdateAtTopElemKernel ********************************/
+
+struct FluidUpdateAtReferenceConditionsKernel
+{
+  template< typename FLUID_WRAPPER >
+  static void
+  Launch( arrayView1d< localIndex const > const & targetSet,
+          FLUID_WRAPPER const & fluidWrapper,
+          real64 const refPres )
+  {
+    forAll< parallelDevicePolicy<> >( targetSet.size(), [=] GEOSX_HOST_DEVICE ( localIndex const a )
+    {
+      localIndex const k = targetSet[a];
+      for( localIndex q = 0; q < fluidWrapper.numGauss(); ++q )
+      {
+        fluidWrapper.Update( k, q, refPres );
+      }
+    } );
+  }
 };
 
 
