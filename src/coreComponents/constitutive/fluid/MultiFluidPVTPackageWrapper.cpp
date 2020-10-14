@@ -140,7 +140,7 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     auto const & comp = props.MoleComposition;
     auto const & dens = m_useMass ? props.MassDensity : props.MoleDensity;
     auto const & visc = props.Viscosity;
-    
+
     phaseFrac[ip] = frac.value;
     phaseDens[ip] = dens.value;
     phaseVisc[ip] = visc.value;
@@ -325,11 +325,11 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     auto const & comp = props.MoleComposition;
     auto const & dens = m_useMass ? props.MassDensity : props.MoleDensity;
     auto const & visc = props.Viscosity;
-    
+
     phaseFrac.value[ip] = frac.value;
     phaseFrac.dPres[ip] = frac.dP;
     phaseFrac.dTemp[ip] = frac.dT;
-    
+
     phaseDens.value[ip] = dens.value;
     phaseDens.dPres[ip] = dens.dP;
     phaseDens.dTemp[ip] = dens.dT;
@@ -337,13 +337,13 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     phaseVisc.value[ip] = visc.value;
     phaseVisc.dPres[ip] = visc.dP;
     phaseVisc.dTemp[ip] = visc.dT;
-    
+
     for( localIndex jc = 0; jc < NC; ++jc )
     {
       phaseFrac.dComp[ip][jc] = frac.dz[jc];
       phaseDens.dComp[ip][jc] = dens.dz[jc];
       phaseVisc.dComp[ip][jc] = visc.dz[jc];
-    
+
       phaseCompFrac.value[ip][jc] = comp.value[jc];
       phaseCompFrac.dPres[ip][jc] = comp.dP[jc];
       phaseCompFrac.dTemp[ip][jc] = comp.dT[jc];

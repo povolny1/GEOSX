@@ -266,7 +266,7 @@ private:
 
 ENUM_STRINGS( WellControls::Type, "producer", "injector" )
 
-ENUM_STRINGS( WellControls::Control, "BHP", "oilVolRate", "totalVolRate", "totalMassRate" )
+ENUM_STRINGS( WellControls::Control, "BHP", "oilVolRate", "totalVolRate" )
 
 } //namespace geosx
 

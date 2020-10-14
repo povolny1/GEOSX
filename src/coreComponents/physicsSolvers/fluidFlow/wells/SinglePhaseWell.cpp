@@ -186,7 +186,7 @@ void SinglePhaseWell::UpdateBHPAndVolRatesForConstraints( WellElementSubRegion &
 
     // note: a check in the solver should make sure that the reference elevation is actually in the top well element
     currentBHP = pres[k] + dPres[k] + dens[k][0] * ( refGravCoef - wellElemGravCoef[k] );
-    dCurrentBHP_dPres = 1; // assume that density is computed with a fixed pressure
+    dCurrentBHP_dPres = 1.0; // assume that density is computed with a fixed pressure
 
     real64 const densInv = 1.0 / dens[k][0];
     currentVolRate = ( connRate[k] + dConnRate[k] ) * densInv;
@@ -275,9 +275,13 @@ void SinglePhaseWell::InitializeWells( DomainPartition & domain )
     //       to better initialize the rates
     UpdateState( subRegion, targetIndex );
 
+    SingleFluidBase const & fluid = GetConstitutiveModel< SingleFluidBase >( subRegion, m_fluidModelNames[targetIndex] );
+    arrayView2d< real64 const > const & wellElemDens = fluid.density();
+
     // 5) Estimate the well rates
     RateInitializationKernel::Launch< parallelDevicePolicy<> >( subRegion.size(),
                                                                 wellControls,
+                                                                wellElemDens,
                                                                 connRate );
   } );
 }
@@ -290,6 +294,9 @@ void SinglePhaseWell::AssembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( time_n
                                          arrayView1d< real64 > const & localRhs )
 {
   GEOSX_MARK_FUNCTION;
+
+  // saved current dt for residual normalization
+  m_currentDt = dt;
 
   MeshLevel const & meshLevel = *domain.getMeshBody( 0 )->getMeshLevel( 0 );
 
@@ -497,18 +504,22 @@ SinglePhaseWell::CalculateResidualNorm( DomainPartition const & domain,
     arrayView1d< globalIndex const > const & wellElemDofNumber =
       subRegion.getReference< array1d< globalIndex > >( wellDofKey );
     arrayView1d< integer const > const & wellElemGhostRank = subRegion.ghostRank();
-    arrayView1d< real64 const > const & wellElemVolume = subRegion.getElementVolume();
 
     SingleFluidBase const & fluid = GetConstitutiveModel< SingleFluidBase >( subRegion, m_fluidModelNames[targetIndex] );
     arrayView2d< real64 const > const & wellElemDensity = fluid.density();
 
+    WellControls const & wellControls = GetWellControls( subRegion );
+
     ResidualNormKernel::Launch< parallelDevicePolicy<>,
                                 parallelDeviceReduce >( localRhs,
                                                         dofManager.rankOffset(),
+                                                        subRegion.IsLocallyOwned(),
+                                                        subRegion.GetTopWellElementIndex(),
+                                                        wellControls,
                                                         wellElemDofNumber,
                                                         wellElemGhostRank,
-                                                        wellElemVolume,
                                                         wellElemDensity,
+                                                        m_currentDt,
                                                         &localResidualNorm );
 
   } );

@@ -606,6 +606,7 @@ struct RateInitializationKernel
   static void
   Launch( localIndex const subRegionSize,
           WellControls const & wellControls,
+          arrayView2d< real64 const > const & wellElemDens,
           arrayView1d< real64 > const & connRate )
   {
     real64 const targetRate = wellControls.GetTargetRate();
@@ -619,13 +620,18 @@ struct RateInitializationKernel
       {
         // if BHP constraint set rate below the absolute max rate
         // with the appropriate sign (negative for prod, positive for inj)
-        connRate[iwelem] = ( wellType == WellControls::Type::PRODUCER )
-                     ? LvArray::math::max( 0.1 * targetRate, -1e3 )
-             : LvArray::math::min( 0.1 * targetRate, 1e3 );
+        if( wellType == WellControls::Type::PRODUCER )
+        {
+          connRate[iwelem] = LvArray::math::max( 0.1 * targetRate * wellElemDens[iwelem][0], -1e3 );
+        }
+        else
+        {
+          connRate[iwelem] = LvArray::math::min( 0.1 * targetRate * wellElemDens[iwelem][0], 1e3 );
+        }
       }
       else
       {
-        connRate[iwelem] = targetRate;
+        connRate[iwelem] = targetRate * wellElemDens[iwelem][0];
       }
     } );
   }
@@ -664,12 +670,20 @@ struct ResidualNormKernel
   static void
   Launch( LOCAL_VECTOR const localResidual,
           globalIndex const rankOffset,
+          bool const isLocallyOwned,
+          localIndex const iwelemControl,
+          WellControls const & wellControls,
           arrayView1d< globalIndex const > const & wellElemDofNumber,
           arrayView1d< integer const > const & wellElemGhostRank,
-          arrayView1d< real64 const > const & wellElemVolume,
-          arrayView2d< real64 const > const & wellElemDensity,
+          arrayView2d< real64 const > const & wellElemDens,
+          real64 const dt,
           real64 * localResidualNorm )
   {
+    WellControls::Control const currentControl = wellControls.GetControl();
+    real64 const targetBHP = wellControls.GetTargetBHP();
+    real64 const targetRate = wellControls.GetTargetRate();
+    real64 const absTargetRate = fabs( targetRate );
+
     RAJA::ReduceSum< REDUCE_POLICY, real64 > sumScaled( 0.0 );
 
     forAll< POLICY >( wellElemDofNumber.size(), [=] GEOSX_HOST_DEVICE ( localIndex const iwelem )
@@ -678,9 +692,31 @@ struct ResidualNormKernel
       {
         for( localIndex idof = 0; idof < 2; ++idof )
         {
-          real64 const normalizer = ( idof == SinglePhaseWell::RowOffset::MASSBAL )
-                                    ? wellElemDensity[iwelem][0] * wellElemVolume[iwelem]
-                                    : 1;
+          real64 normalizer = 0.0;
+          if( idof == SinglePhaseWell::RowOffset::CONTROL )
+          {
+            // for the top well element, normalize using the current control
+            if( isLocallyOwned && iwelem == iwelemControl )
+            {
+              if( currentControl == WellControls::Control::BHP )
+              {
+                normalizer = targetBHP;
+              }
+              else if( currentControl == WellControls::Control::TOTALVOLRATE )
+              {
+                normalizer = absTargetRate;
+              }
+            }
+            // for the pressure difference equation, always normalize by the BHP
+            else
+            {
+              normalizer = targetBHP;
+            }
+          }
+          else // SinglePhaseWell::RowOffset::MASSBAL
+          {
+            normalizer = dt * absTargetRate * wellElemDens[iwelem][0];
+          }
           localIndex const lid = wellElemDofNumber[iwelem] + idof - rankOffset;
           real64 const val = localResidual[lid] / normalizer;
           sumScaled += val * val;

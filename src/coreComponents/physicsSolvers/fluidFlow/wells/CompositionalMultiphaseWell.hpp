@@ -245,6 +245,7 @@ public:
     static constexpr auto relPermNamesString  = CompositionalMultiphaseFlow::viewKeyStruct::relPermNamesString;
 
     static constexpr auto maxCompFracChangeString = CompositionalMultiphaseFlow::viewKeyStruct::maxCompFracChangeString;
+    static constexpr auto maxRelativePresChangeString = "maxRelativePressureChange";
     static constexpr auto allowLocalCompDensChoppingString = CompositionalMultiphaseFlow::viewKeyStruct::allowLocalCompDensChoppingString;
 
     // primary solution field
@@ -358,6 +359,9 @@ private:
 
   /// maximum (absolute) change in a component fraction between two Newton iterations
   real64 m_maxCompFracChange;
+
+  /// maximum (relative) change in pressure between two Newton iterations
+  real64 m_maxRelativePresChange;
 
   /// minimum value of the scaling factor obtained by enforcing maxCompFracChange
   real64 m_minScalingFactor;
