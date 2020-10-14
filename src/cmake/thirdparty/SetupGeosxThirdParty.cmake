@@ -517,7 +517,7 @@ endif()
 if( ENABLE_HYPRE )
     message( STATUS "setting up HYPRE" )
 
-    set(HYPRE_DIR ${GEOSX_TPL_DIR}/hypre)
+    set(HYPRE_DIR ${LOCAL_HYPRE_DIR}/hypre)
 
     find_path( HYPRE_INCLUDE_DIRS HYPRE.h
             PATHS  ${HYPRE_DIR}/include
