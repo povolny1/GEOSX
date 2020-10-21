@@ -13,11 +13,11 @@
  */
 
 /**
- * @file CompositionalMultiphaseFlow.hpp
+ * @file CompositionalMultiphaseBase.hpp
  */
 
-#ifndef GEOSX_PHYSICSSOLVERS_FINITEVOLUME_COMPOSITIONALMULTIPHASEFLOW_HPP_
-#define GEOSX_PHYSICSSOLVERS_FINITEVOLUME_COMPOSITIONALMULTIPHASEFLOW_HPP_
+#ifndef GEOSX_PHYSICSSOLVERS_FLUIDFLOW_COMPOSITIONALMULTIPHASEBASE_HPP_
+#define GEOSX_PHYSICSSOLVERS_FLUIDFLOW_COMPOSITIONALMULTIPHASEBASE_HPP_
 
 #include "physicsSolvers/fluidFlow/FlowSolverBase.hpp"
 
@@ -28,10 +28,6 @@ namespace dataRepository
 {
 class Group;
 
-namespace keys
-{
-string const compositionalMultiphaseFlow = "CompositionalMultiphaseFlow";
-}
 }
 class FieldSpecificationBase;
 class FiniteElementBase;
@@ -44,11 +40,11 @@ class MultiFluidBase;
 
 //START_SPHINX_INCLUDE_00
 /**
- * @class CompositionalMultiphaseFlow
+ * @class CompositionalMultiphaseBase
  *
  * A compositional multiphase solver
  */
-class CompositionalMultiphaseFlow : public FlowSolverBase
+class CompositionalMultiphaseBase : public FlowSolverBase
 {
 public:
 
@@ -57,36 +53,30 @@ public:
    * @param name the name of this instantiation of Group in the repository
    * @param parent the parent group of this instantiation of Group
    */
-  CompositionalMultiphaseFlow( const string & name,
+  CompositionalMultiphaseBase( const string & name,
                                Group * const parent );
 
   /// deleted default constructor
-  CompositionalMultiphaseFlow() = delete;
+  CompositionalMultiphaseBase() = delete;
 
   /// deleted copy constructor
-  CompositionalMultiphaseFlow( CompositionalMultiphaseFlow const & ) = delete;
+  CompositionalMultiphaseBase( CompositionalMultiphaseBase const & ) = delete;
 
   /// default move constructor
-  CompositionalMultiphaseFlow( CompositionalMultiphaseFlow && ) = default;
+  CompositionalMultiphaseBase( CompositionalMultiphaseBase && ) = default;
 
   /// deleted assignment operator
-  CompositionalMultiphaseFlow & operator=( CompositionalMultiphaseFlow const & ) = delete;
+  CompositionalMultiphaseBase & operator=( CompositionalMultiphaseBase const & ) = delete;
 
   /// deleted move operator
-  CompositionalMultiphaseFlow & operator=( CompositionalMultiphaseFlow && ) = delete;
+  CompositionalMultiphaseBase & operator=( CompositionalMultiphaseBase && ) = delete;
 
   /**
    * @brief default destructor
    */
-  virtual ~CompositionalMultiphaseFlow() override = default;
+  virtual ~CompositionalMultiphaseBase() override = default;
 
 //START_SPHINX_INCLUDE_01
-
-  /**
-   * @brief name of the solver in the object catalog
-   * @return string that contains the catalog name to generate a new object through the object catalog.
-   */
-  static string CatalogName() { return dataRepository::keys::compositionalMultiphaseFlow; }
 
   virtual void
   RegisterDataOnMesh( Group * const MeshBodies ) override;
@@ -110,10 +100,6 @@ public:
                      DomainPartition & domain ) override;
 
   virtual void
-  SetupDofs( DomainPartition const & domain,
-             DofManager & dofManager ) const override;
-
-  virtual void
   AssembleSystem( real64 const time_n,
                   real64 const dt,
                   DomainPartition & domain,
@@ -129,11 +115,6 @@ public:
                            CRSMatrixView< real64, globalIndex const > const & localMatrix,
                            arrayView1d< real64 > const & localRhs ) override;
 
-  virtual real64
-  CalculateResidualNorm( DomainPartition const & domain,
-                         DofManager const & dofManager,
-                         arrayView1d< real64 const > const & localRhs ) override;
-
   virtual void
   SolveSystem( DofManager const & dofManager,
                ParallelMatrix & matrix,
@@ -144,18 +125,6 @@ public:
   ScalingForSystemSolution( DomainPartition const & domain,
                             DofManager const & dofManager,
                             arrayView1d< real64 const > const & localSolution ) override;
-
-  virtual bool
-  CheckSystemSolution( DomainPartition const & domain,
-                       DofManager const & dofManager,
-                       arrayView1d< real64 const > const & localSolution,
-                       real64 const scalingFactor ) override;
-
-  virtual void
-  ApplySystemSolution( DofManager const & dofManager,
-                       arrayView1d< real64 const > const & localSolution,
-                       real64 const scalingFactor,
-                       DomainPartition & domain ) override;
 
   virtual void
   ResetStateToBeginningOfStep( DomainPartition & domain ) override;
@@ -205,7 +174,7 @@ public:
    * @brief Recompute phase mobility from constitutive and primary variables
    * @param domain the domain containing the mesh and fields
    */
-  void UpdatePhaseMobility( Group & dataGroup, localIndex const targetIndex ) const;
+  virtual void UpdatePhaseMobility( Group & dataGroup, localIndex const targetIndex ) const = 0;
 
   /**
    * @brief Recompute all dependent quantities from primary variables (including constitutive models)
@@ -248,11 +217,12 @@ public:
    * @param matrix the system matrix
    * @param rhs the system right-hand side vector
    */
-  void AssembleFluxTerms( real64 const dt,
-                          DomainPartition const & domain,
-                          DofManager const & dofManager,
-                          CRSMatrixView< real64, globalIndex const > const & localMatrix,
-                          arrayView1d< real64 > const & localRhs ) const;
+  virtual void
+  AssembleFluxTerms( real64 const dt,
+                     DomainPartition const & domain,
+                     DofManager const & dofManager,
+                     CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                     arrayView1d< real64 > const & localRhs ) const = 0;
 
   /**
    * @brief assembles the volume balance terms for all cells
@@ -276,7 +246,7 @@ public:
 
   struct viewKeyStruct : FlowSolverBase::viewKeyStruct
   {
-    static constexpr auto dofFieldString = "compositionalVariables";
+    static constexpr auto elemDofFieldString = "compositionalVariables";
 
     // inputs
     static constexpr auto temperatureString = "temperature";
@@ -310,7 +280,9 @@ public:
 
     // these are used to store last converged time step values
     static constexpr auto phaseVolumeFractionOldString     = "phaseVolumeFractionOld";
+    static constexpr auto totalDensityOldString            = "totalDensityOld";
     static constexpr auto phaseDensityOldString            = "phaseDensityOld";
+    static constexpr auto phaseMobilityOldString           = "phaseMobilityOld";
     static constexpr auto phaseComponentFractionOldString  = "phaseComponentFractionOld";
     static constexpr auto porosityOldString                = "porosityOld";
 
@@ -319,10 +291,10 @@ public:
     static constexpr auto phaseRelativePermeabilityString  = "phaseRelativePermeability";
     static constexpr auto phaseCapillaryPressureString     = "phaseCapillaryPressure";
 
-  } viewKeysCompMultiphaseFlow;
+  } viewKeysCompMultiphaseBase;
 
   struct groupKeyStruct : SolverBase::groupKeyStruct
-  {} groupKeysCompMultiphaseFlow;
+  {} groupKeysCompMultiphaseBase;
 
   void ReadPressureAndCompositionsFromFile( ElementSubRegionBase & subRegion ) const;
 
@@ -394,8 +366,6 @@ protected:
    */
   void ValidateConstitutiveModels( constitutive::ConstitutiveManager const & cm ) const;
 
-private:
-
   /**
    * @brief Resize the allocated multidimensional fields
    * @param domain the domain containing the mesh and fields
@@ -464,10 +434,13 @@ private:
   ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_phaseCapPressure;
   ElementRegionManager::ElementViewAccessor< arrayView4d< real64 const > > m_dPhaseCapPressure_dPhaseVolFrac;
 
+  ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > m_totalDensOld;
+  ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_phaseMobOld;
+
 };
 
 
 } // namespace geosx
 
 
-#endif //GEOSX_PHYSICSSOLVERS_FINITEVOLUME_COMPOSITIONALMULTIPHASEFLOW_HPP_
+#endif //GEOSX_PHYSICSSOLVERS_FLUIDFLOW_COMPOSITIONALMULTIPHASEBASE_HPP_

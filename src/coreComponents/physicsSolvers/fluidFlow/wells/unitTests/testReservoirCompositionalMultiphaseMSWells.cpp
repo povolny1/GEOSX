@@ -24,7 +24,7 @@
 #include "physicsSolvers/PhysicsSolverManager.hpp"
 #include "physicsSolvers/multiphysics/ReservoirSolverBase.hpp"
 #include "physicsSolvers/multiphysics/CompositionalMultiphaseReservoir.hpp"
-#include "physicsSolvers/fluidFlow/CompositionalMultiphaseFlow.hpp"
+#include "physicsSolvers/fluidFlow/CompositionalMultiphaseFVM.hpp"
 #include "physicsSolvers/fluidFlow/wells/CompositionalMultiphaseWell.hpp"
 
 
@@ -45,16 +45,16 @@ char const * xmlInput =
   "      <LinearSolverParameters solverType=\"direct\"\n"
   "                              logLevel=\"2\"/>\n"
   "    </CompositionalMultiphaseReservoir>\n"
-  "    <CompositionalMultiphaseFlow name=\"compositionalMultiphaseFlow\"\n"
-  "                                 logLevel=\"1\"\n"
-  "                                 discretization=\"fluidTPFA\"\n"
-  "                                 targetRegions=\"{Region1}\"\n"
-  "                                 fluidNames=\"{fluid1}\"\n"
-  "                                 solidNames=\"{rock}\"\n"
-  "                                 relPermNames=\"{relperm}\"\n"
-  "                                 temperature=\"297.15\"\n"
-  "                                 useMass=\"0\">\n"
-  "    </CompositionalMultiphaseFlow>\n"
+  "    <CompositionalMultiphaseFVM name=\"compositionalMultiphaseFlow\"\n"
+  "                                logLevel=\"1\"\n"
+  "                                discretization=\"fluidTPFA\"\n"
+  "                                targetRegions=\"{Region1}\"\n"
+  "                                fluidNames=\"{fluid1}\"\n"
+  "                                solidNames=\"{rock}\"\n"
+  "                                relPermNames=\"{relperm}\"\n"
+  "                                temperature=\"297.15\"\n"
+  "                                useMass=\"0\">\n"
+  "    </CompositionalMultiphaseFVM>\n"
   "    <CompositionalMultiphaseWell name=\"compositionalMultiphaseWell\"\n"
   "                                 logLevel=\"1\"\n"
   "                                 targetRegions=\"{wellRegion1,wellRegion2}\"\n"
@@ -223,7 +223,7 @@ void testNumericalJacobian( CompositionalMultiphaseReservoir & solver,
                             LAMBDA && assembleFunction )
 {
   CompositionalMultiphaseWell & wellSolver = *solver.GetWellSolver()->group_cast< CompositionalMultiphaseWell * >();
-  CompositionalMultiphaseFlow & flowSolver = *solver.GetFlowSolver()->group_cast< CompositionalMultiphaseFlow * >();
+  CompositionalMultiphaseFVM & flowSolver = *solver.GetFlowSolver()->group_cast< CompositionalMultiphaseFVM * >();
 
   localIndex const NC = flowSolver.numFluidComponents();
 
@@ -270,15 +270,15 @@ void testNumericalJacobian( CompositionalMultiphaseReservoir & solver,
 
       // get the primary variables on the reservoir elements
       arrayView1d< real64 const > const & pres =
-        subRegion.getReference< array1d< real64 > >( CompositionalMultiphaseFlow::viewKeyStruct::pressureString );
+        subRegion.getReference< array1d< real64 > >( CompositionalMultiphaseBase::viewKeyStruct::pressureString );
       arrayView1d< real64 > const & dPres =
-        subRegion.getReference< array1d< real64 > >( CompositionalMultiphaseFlow::viewKeyStruct::deltaPressureString );
+        subRegion.getReference< array1d< real64 > >( CompositionalMultiphaseBase::viewKeyStruct::deltaPressureString );
       pres.move( LvArray::MemorySpace::CPU, false );
 
       arrayView2d< real64 const > const & compDens =
-        subRegion.getReference< array2d< real64 > >( CompositionalMultiphaseFlow::viewKeyStruct::globalCompDensityString );
+        subRegion.getReference< array2d< real64 > >( CompositionalMultiphaseBase::viewKeyStruct::globalCompDensityString );
       arrayView2d< real64 > const & dCompDens =
-        subRegion.getReference< array2d< real64 > >( CompositionalMultiphaseFlow::viewKeyStruct::deltaGlobalCompDensityString );
+        subRegion.getReference< array2d< real64 > >( CompositionalMultiphaseBase::viewKeyStruct::deltaGlobalCompDensityString );
       compDens.move( LvArray::MemorySpace::CPU, false );
 
       // a) compute all the derivatives wrt to the pressure in RESERVOIR elem ei

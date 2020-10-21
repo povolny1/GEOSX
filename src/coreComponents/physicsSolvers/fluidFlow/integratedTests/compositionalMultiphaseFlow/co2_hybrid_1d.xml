@@ -1,8 +1,8 @@
 <?xml version="1.0" ?>
 
 <Problem>
-  <Solvers>
-    <CompositionalMultiphaseFVM
+  <Solvers gravityVector="0.0, 0.0, 0.0">
+    <CompositionalMultiphaseHybridFVM
       name="compflow"
       logLevel="1"
       discretization="fluidTPFA"
@@ -13,14 +13,13 @@
       useMass="1"
       targetRegions="{ Region1 }">
       <NonlinearSolverParameters
-        newtonTol="1.0e-5"
+        newtonTol="1.0e-6"
         newtonMaxIter="100"
         maxTimeStepCuts="5"
         lineSearchAction="None"/>
       <LinearSolverParameters
-        solverType="bicgstab"
-        krylovTol="1e-7"/>
-    </CompositionalMultiphaseFVM>
+        solverType="direct"/>
+    </CompositionalMultiphaseHybridFVM>
   </Solvers>
 
   <Mesh>
@@ -28,47 +27,43 @@
       name="mesh1"
       elementTypes="{ C3D8 }"
       xCoords="{ 0, 30 }"
-      yCoords="{ 0, 30 }"
-      zCoords="{ 0, 30 }"
+      yCoords="{ 0, 1 }"
+      zCoords="{ 0, 1 }"
       nx="{ 10 }"
-      ny="{ 10 }"
-      nz="{ 10 }"
+      ny="{ 1 }"
+      nz="{ 1 }"
       cellBlockNames="{ cb1 }"/>
   </Mesh>
 
   <Geometry>
     <Box
-      name="source"
-      xMin="-0.01, 27.99, -0.01"
-      xMax="2.01, 30.01, 10.01"/>
-
-    <Box
-      name="sink1"
+      name="sink"
       xMin="27.99, -0.01, -0.01"
-      xMax="30.01, 30.01, 30.01"/>
+      xMax="30.01,  1.01,  1.01"/>
 
     <Box
-      name="sink2"
-      xMin="-0.01, -0.01, 27.99"
-      xMax="30.01, 30.01, 30.01"/>
+      name="source"
+      xMin="-0.01, -0.01, -0.01"
+      xMax=" 3.01,  1.01,  1.01"/>
   </Geometry>
 
   <Events
-    maxTime="1e6">
+    maxTime="1e5">
+
+   <PeriodicEvent
+      name="outputs"
+      timeFrequency="1e4"
+      targetExactTimestep="1"
+      target="/Outputs/siloOutput"/>
+    
     <PeriodicEvent
       name="solverApplications"
-      forceDt="5e4"
+      forceDt="1e4"
       target="/Solvers/compflow"/>
 
     <PeriodicEvent
-      name="outputs"
-      timeFrequency="1e5"
-      targetExactTimestep="1"
-      target="/Outputs/siloOutput"/>
-
-    <PeriodicEvent
       name="restarts"
-      timeFrequency="5e5"
+      timeFrequency="5e1"
       targetExactTimestep="0"
       target="/Outputs/sidreRestart"/>
   </Events>
@@ -155,7 +150,14 @@
       fieldName="pressure"
       scale="9e6"/>
 
-    <!-- Initial composition: no water, only heavy hydrocarbon components and N2 -->
+    <FieldSpecification
+      name="initialFacePressure"
+      initialCondition="1"
+      setNames="{ all }"
+      objectPath="faceManager"
+      fieldName="facePressure"
+      scale="9e6"/>
+    
     <FieldSpecification
       name="initialComposition_co2"
       initialCondition="1"
@@ -174,61 +176,52 @@
       component="1"
       scale="0.995"/>
 
-    <!-- Injection rate: 0.1 kg/s -->
-    <SourceFlux
+    <FieldSpecification
+      name="sinkTerm"
+      objectPath="ElementRegions/Region1/cb1"
+      fieldName="pressure"
+      scale="1e4"
+      setNames="{ sink }"/>
+
+    <FieldSpecification
       name="sourceTerm"
       objectPath="ElementRegions/Region1/cb1"
-      component="0"
-      scale="-0.03"
+      fieldName="pressure"
+      scale="1e8"
       setNames="{ source }"/>
 
-    <!-- Production stream: same as initial (should not matter due to upwinding) -->
     <FieldSpecification
-      name="sinkTerm1"
-      objectPath="ElementRegions/Region1/cb1"
-      fieldName="pressure"
-      scale="9e6"
-      setNames="{ sink1 }"/>
-
-    <FieldSpecification
-      name="sinkTermComposition1_co2"
-      setNames="{ sink1 }"
-      objectPath="ElementRegions/Region1/elementSubRegions/cb1"
-      fieldName="globalCompFraction"
-      component="0"
-      scale="0.005"/>
-
-    <FieldSpecification
-      name="sinkTermComposition1_water"
-      setNames="{ sink1 }"
-      objectPath="ElementRegions/Region1/cb1"
-      fieldName="globalCompFraction"
-      component="1"
-      scale="0.995"/>
-
-    <FieldSpecification
-      name="sinkTerm2"
-      objectPath="ElementRegions/Region1/cb1"
-      fieldName="pressure"
-      scale="9e6"
-      setNames="{ sink2 }"/>
-
-    <!-- Production stream: same as initial (should not matter due to upwinding) -->
-    <FieldSpecification
-      name="sinkTermComposition2_co2"
-      setNames="{ sink2 }"
+      name="sinkTermComposition_co2"
+      setNames="{ sink }"
       objectPath="ElementRegions/Region1/cb1"
       fieldName="globalCompFraction"
       component="0"
       scale="0.005"/>
 
     <FieldSpecification
-      name="sinkTermComposition2_water"
-      setNames="{ sink2 }"
+      name="sinkTermComposition_water"
+      setNames="{ sink }"
       objectPath="ElementRegions/Region1/cb1"
       fieldName="globalCompFraction"
       component="1"
       scale="0.995"/>
+    
+    <FieldSpecification
+      name="sourceTermComposition_co2"
+      setNames="{ source }"
+      objectPath="ElementRegions/Region1/cb1"
+      fieldName="globalCompFraction"
+      component="0"
+      scale="0.995"/>
+
+    <FieldSpecification
+      name="sourceTermComposition_water"
+      setNames="{ source }"
+      objectPath="ElementRegions/Region1/cb1"
+      fieldName="globalCompFraction"
+      component="1"
+      scale="0.005"/>
+  
   </FieldSpecifications>
 
   <Functions/>
@@ -236,7 +229,6 @@
   <Outputs>
     <Silo
       name="siloOutput"/>
-
     <Restart
       name="sidreRestart"/>
   </Outputs>

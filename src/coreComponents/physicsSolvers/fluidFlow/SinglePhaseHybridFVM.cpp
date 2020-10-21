@@ -32,7 +32,6 @@ namespace geosx
 using namespace dataRepository;
 using namespace constitutive;
 using namespace SinglePhaseHybridFVMKernels;
-using namespace HybridFVMInnerProduct;
 
 SinglePhaseHybridFVM::SinglePhaseHybridFVM( const std::string & name,
                                             Group * const parent ):
@@ -55,11 +54,11 @@ void SinglePhaseHybridFVM::RegisterDataOnMesh( Group * const MeshBodies )
   // 2) Register the face data
   for( auto & mesh : MeshBodies->GetSubGroups() )
   {
-    MeshLevel * const meshLevel = Group::group_cast< MeshBody * >( mesh.second )->getMeshLevel( 0 );
-    FaceManager * const faceManager = meshLevel->getFaceManager();
+    MeshLevel & meshLevel = *Group::group_cast< MeshBody * >( mesh.second )->getMeshLevel( 0 );
+    FaceManager & faceManager = *meshLevel.getFaceManager();
 
-    // primary variables: face pressures changes
-    faceManager->registerWrapper< array1d< real64 > >( viewKeyStruct::deltaFacePressureString )->
+    // primary variables: face pressure changes
+    faceManager.registerWrapper< array1d< real64 > >( viewKeyStruct::deltaFacePressureString )->
       setPlotLevel( PlotLevel::LEVEL_0 )->
       setRegisteringObjects( this->getName())->
       setDescription( "An array that holds the accumulated pressure updates at the faces." );
@@ -84,7 +83,6 @@ void SinglePhaseHybridFVM::InitializePostInitialConditions_PreSubGroups( Group *
   {
     m_regionFilter.insert( elemManager.GetRegions().getIndex( regionName ) );
   }
-
 }
 
 void SinglePhaseHybridFVM::ImplicitStepSetup( real64 const & time_n,
