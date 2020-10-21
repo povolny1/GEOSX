@@ -423,6 +423,7 @@ void CompositionalMultiphaseFlow::UpdatePhaseMobility( Group & dataGroup, localI
                                                 phaseMob,
                                                 dPhaseMob_dPres,
                                                 dPhaseMob_dComp );
+
 }
 
 void CompositionalMultiphaseFlow::UpdateFluidModel( Group & dataGroup, localIndex const targetIndex ) const
@@ -515,6 +516,62 @@ void CompositionalMultiphaseFlow::UpdateState( Group & dataGroup, localIndex con
   UpdateCapPressureModel( dataGroup, targetIndex );
 }
 
+void CompositionalMultiphaseFlow::ReadPressureAndCompositionsFromFile( ElementSubRegionBase & subRegion ) const
+{
+  GEOSX_UNUSED_VAR( subRegion );
+
+  arrayView1d< real64 > const pres =
+    subRegion.getReference< array1d< real64 > >( viewKeyStruct::pressureString );
+  arrayView2d< real64 > const compFrac =
+    subRegion.getReference< array2d< real64 > >( viewKeyStruct::globalCompFractionString );
+
+  std::string const pressureFileName = "pres.txt";
+  std::string const compFracFileName = "swat.txt";
+  std::string line;
+  std::ifstream pressureFile( pressureFileName );
+  std::ifstream compFracFile( compFracFileName );
+
+  localIndex counter = 0;
+  size_t pos = 0;
+  std::string token;
+  std::string const delimiter = " ";
+  if( pressureFile.is_open() )
+  {
+    while( std::getline( pressureFile, line ) )
+    {
+      pos = line.find( delimiter );
+      token = line.substr( pos+1, pos+7 );
+      real64 const pierre_pres = std::stod( token );
+      pres[counter] = pierre_pres*1e5;
+      counter++;
+    }
+    pressureFile.close();
+  }
+  counter = 0;
+  if( compFracFile.is_open() )
+  {
+    while( std::getline( compFracFile, line ) )
+    {
+      pos = line.find( delimiter );
+      token = line.substr( pos+1, pos+3 );
+      real64 pierre_compFrac = std::stod( token );
+      if( pierre_compFrac < 0.0001 )
+      {
+        pierre_compFrac = 0.0001;
+      }
+      else if( pierre_compFrac > 0.9999 )
+      {
+        pierre_compFrac = 0.9999;
+      }
+      compFrac[counter][0] = 1.0 - pierre_compFrac;
+      compFrac[counter][1] = pierre_compFrac;
+      counter++;
+    }
+    compFracFile.close();
+  }
+
+}
+
 void CompositionalMultiphaseFlow::InitializeFluidState( MeshLevel & mesh ) const
 {
   GEOSX_MARK_FUNCTION;
@@ -523,6 +580,10 @@ void CompositionalMultiphaseFlow::InitializeFluidState( MeshLevel & mesh ) const
 
   forTargetSubRegions( mesh, [&]( localIndex const targetIndex, ElementSubRegionBase & subRegion )
   {
+
+    // ugly hack to match exactly Intersect's initial condition
+    ReadPressureAndCompositionsFromFile( subRegion );
+
     // 1. Assume global component fractions have been prescribed.
     // Initialize constitutive state to get fluid density.
     UpdateFluidModel( subRegion, targetIndex );

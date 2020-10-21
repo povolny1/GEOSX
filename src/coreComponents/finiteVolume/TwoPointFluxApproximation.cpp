@@ -189,6 +189,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
                  stencilWeights.data(),
                  kf );
   } );
+
 }
 
 void TwoPointFluxApproximation::registerFractureStencil( Group & stencilGroup ) const

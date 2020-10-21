@@ -324,6 +324,8 @@ public:
   struct groupKeyStruct : SolverBase::groupKeyStruct
   {} groupKeysCompMultiphaseFlow;
 
+  void ReadPressureAndCompositionsFromFile( ElementSubRegionBase & subRegion ) const;
+
   /**
    * @brief Initialize all variables from initial conditions
    * @param domain the domain containing the mesh and fields
