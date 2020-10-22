@@ -647,16 +647,16 @@ AssemblerKernelHelper::AssembleConstraints( arrayView1d< globalIndex const > con
     }
 
     // flux at this face
-    real64 const flux = oneSidedVolFlux[ifaceLoc];
-    dFlux_dElemVars[0] = dOneSidedVolFlux_dPres[ifaceLoc];
+    real64 const flux = -oneSidedVolFlux[ifaceLoc];
+    dFlux_dElemVars[0] = -dOneSidedVolFlux_dPres[ifaceLoc];
     for( localIndex ic = 0; ic < NC; ++ic )
     {
-      dFlux_dElemVars[ic+1] = dOneSidedVolFlux_dCompDens[ifaceLoc][ic];
+      dFlux_dElemVars[ic+1] = -dOneSidedVolFlux_dCompDens[ifaceLoc][ic];
     }
 
     for( localIndex jfaceLoc = 0; jfaceLoc < NF; ++jfaceLoc )
     {
-      dFlux_dFaceVars[jfaceLoc] = dOneSidedVolFlux_dFacePres[ifaceLoc][jfaceLoc];
+      dFlux_dFaceVars[jfaceLoc] = -dOneSidedVolFlux_dFacePres[ifaceLoc][jfaceLoc];
       dofColIndicesFaceVars[jfaceLoc] = faceDofNumber[elemToFaces[jfaceLoc]];
     }
 
@@ -907,7 +907,7 @@ FluxKernel::Launch( localIndex er,
                                                                        elemCenter[ei],
                                                                        elemVolume[ei],
                                                                        perm,
-                                                                       2.0,
+                                                                       0.2,
                                                                        lengthTolerance,
                                                                        transMatrix );
 

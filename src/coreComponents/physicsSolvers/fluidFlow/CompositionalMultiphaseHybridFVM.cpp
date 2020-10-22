@@ -264,6 +264,140 @@ void CompositionalMultiphaseHybridFVM::AssembleFluxTerms( real64 const dt,
   } );
 }
 
+real64 CompositionalMultiphaseHybridFVM::ScalingForSystemSolution( DomainPartition const & domain,
+                                                                   DofManager const & dofManager,
+                                                                   arrayView1d< real64 const > const & localSolution )
+{
+  GEOSX_MARK_FUNCTION;
+
+  // check if we want to rescale the Newton update
+  if( m_maxCompFracChange >= 1.0 )
+  {
+    // no rescaling wanted, we just return 1.0;
+    return 1.0;
+  }
+
+  real64 constexpr eps = CompositionalMultiphaseBaseKernels::minDensForDivision;
+  real64 const maxCompFracChange = m_maxCompFracChange;
+  real64 const maxRelativePresChange = 0.1;
+
+  localIndex const NC = m_numComponents;
+
+  MeshLevel const & mesh = *domain.getMeshBody( 0 )->getMeshLevel( 0 );
+  FaceManager const & faceManager = *mesh.getFaceManager();
+
+  string const faceDofKey = dofManager.getKey( viewKeyStruct::faceDofFieldString );
+  arrayView1d< globalIndex const > const & faceDofNumber =
+    faceManager.getReference< array1d< globalIndex > >( faceDofKey );
+  arrayView1d< integer const > const & faceGhostRank = faceManager.ghostRank();
+
+  arrayView1d< real64 const > const & facePressure =
+    faceManager.getReference< array1d< real64 > >( viewKeyStruct::facePressureString );
+  arrayView1d< real64 const > const & dFacePressure =
+    faceManager.getReference< array1d< real64 > >( viewKeyStruct::deltaFacePressureString );
+
+  globalIndex const rankOffset = dofManager.rankOffset();
+  string const dofKey = dofManager.getKey( viewKeyStruct::elemDofFieldString );
+  real64 scalingFactor = 1.0;
+
+  forTargetSubRegions( mesh, [&]( localIndex const, ElementSubRegionBase const & subRegion )
+  {
+    arrayView1d< globalIndex const > const & dofNumber = subRegion.getReference< array1d< globalIndex > >( dofKey );
+    arrayView1d< integer const > const & elemGhostRank = subRegion.ghostRank();
+
+    // get a reference to the primary variables on well elements
+    arrayView1d< real64 const > const & pressure =
+      subRegion.getReference< array1d< real64 > >( viewKeyStruct::pressureString );
+    arrayView1d< real64 const > const & dPressure =
+      subRegion.getReference< array1d< real64 > >( viewKeyStruct::deltaPressureString );
+
+    arrayView2d< real64 const > const & compDens =
+      subRegion.getReference< array2d< real64 > >( viewKeyStruct::globalCompDensityString );
+    arrayView2d< real64 const > const & dCompDens =
+      subRegion.getReference< array2d< real64 > >( viewKeyStruct::deltaGlobalCompDensityString );
+
+    RAJA::ReduceMin< parallelDeviceReduce, real64 > minVal( 1.0 );
+
+    forAll< parallelDevicePolicy<> >( dofNumber.size(), [=] GEOSX_HOST_DEVICE ( localIndex const ei )
+    {
+      if( elemGhostRank[ei] < 0 )
+      {
+
+        // the scaling of the pressures is particularly useful for the beginning of the simulation
+        // with active rate control, but is useless otherwise
+        real64 const pres = pressure[ei] + dPressure[ei];
+        real64 const absPresChange = fabs( localSolution[dofNumber[ei] - rankOffset] );
+        if( pres < eps )
+        {
+          real64 const relativePresChange = fabs( absPresChange ) / pres;
+          if( relativePresChange > maxRelativePresChange )
+          {
+            minVal.min( maxRelativePresChange / relativePresChange );
+          }
+        }
+
+        real64 prevTotalDens = 0;
+        for( localIndex ic = 0; ic < NC; ++ic )
+        {
+          prevTotalDens += compDens[ei][ic] + dCompDens[ei][ic];
+        }
+
+        // compute the change in component densities and component fractions
+        for( localIndex ic = 0; ic < NC; ++ic )
+        {
+          localIndex const lid = dofNumber[ei] + ic + 1 - rankOffset;
+
+          // compute scaling factor based on relative change in component densities
+          real64 const absCompDensChange = fabs( localSolution[lid] );
+          real64 const maxAbsCompDensChange = maxCompFracChange * prevTotalDens;
+
+          // This actually checks the change in component fraction, using a lagged total density
+          // Indeed we can rewrite the following check as:
+          //    | prevCompDens / prevTotalDens - newCompDens / prevTotalDens | > maxCompFracChange
+          // Note that the total density in the second term is lagged (i.e, we use prevTotalDens)
+          // because I found it more robust than using directly newTotalDens (which can vary also
+          // wildly when the compDens change is large)
+          if( absCompDensChange > maxAbsCompDensChange && absCompDensChange > eps )
+          {
+            minVal.min( maxAbsCompDensChange / absCompDensChange );
+          }
+        }
+      }
+    } );
+
+    if( minVal.get() < scalingFactor )
+    {
+      scalingFactor = minVal.get();
+    }
+  } );
+
+  RAJA::ReduceMin< parallelDeviceReduce, real64 > minFaceVal( 1.0 );
+  forAll< parallelDevicePolicy<> >( faceManager.size(), [=] GEOSX_HOST_DEVICE ( localIndex const iface )
+  {
+    if( faceGhostRank[iface] < 0 && faceDofNumber[iface] >= 0 )
+    {
+      real64 const facePres = facePressure[iface] + dFacePressure[iface];
+      real64 const absPresChange = fabs( localSolution[faceDofNumber[iface] - rankOffset] );
+      if( facePres < eps )
+      {
+        real64 const relativePresChange = fabs( absPresChange ) / facePres;
+        if( relativePresChange > maxRelativePresChange )
+        {
+          minFaceVal.min( maxRelativePresChange / relativePresChange );
+        }
+      }
+    }
+  } );
+
+  if( minFaceVal.get() < scalingFactor )
+  {
+    scalingFactor = minFaceVal.get();
+  }
+
+  return LvArray::math::max( MpiWrapper::Min( scalingFactor, MPI_COMM_GEOSX ), m_minScalingFactor );
+}
+
+
 bool CompositionalMultiphaseHybridFVM::CheckSystemSolution( DomainPartition const & domain,
                                                             DofManager const & dofManager,
                                                             arrayView1d< real64 const > const & localSolution,
