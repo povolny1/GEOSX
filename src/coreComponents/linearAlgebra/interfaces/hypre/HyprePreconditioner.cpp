@@ -571,7 +571,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     /* options for solvers at each level */
     HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
-    HYPRE_Int mgr_num_gsmooth_sweeps = 1;
+    HYPRE_Int mgr_num_gsmooth_sweeps = 0;
 
     mgr_level_interp_type.resize( mgr_nlevels );
     mgr_level_interp_type[0] = 2;
@@ -587,11 +587,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
     mgr_num_cindexes[0] = mgr_bsize - 1; // eliminate the last density
     mgr_num_cindexes[1] = 2;             // eliminate all other densities
     mgr_num_cindexes[2] = 1;             // eliminate cell centered pressure
-
-    // mgr_coarse_grid_method.resize( mgr_nlevels );
-    // mgr_coarse_grid_method[0] = 1; //diagonal sparsification
-    // mgr_coarse_grid_method[1] = 1; //diagonal sparsification
-    // mgr_coarse_grid_method[2] = 0; //diagonal sparsification
 
     lv_cindexes.resize( mgr_nlevels );
     for( int cid=0; cid < mgr_bsize; cid++ )
