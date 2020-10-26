@@ -907,7 +907,7 @@ FluxKernel::Launch( localIndex er,
                                                                        elemCenter[ei],
                                                                        elemVolume[ei],
                                                                        perm,
-                                                                       0.2,
+                                                                       0.5,
                                                                        lengthTolerance,
                                                                        transMatrix );
 

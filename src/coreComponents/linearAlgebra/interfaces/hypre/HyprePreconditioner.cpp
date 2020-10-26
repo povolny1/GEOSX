@@ -1,4 +1,3 @@
-
 /*
  * ------------------------------------------------------------------------------------------------------------
  * SPDX-License-Identifier: LGPL-2.1-only
@@ -406,7 +405,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
       );
     m_functions->aux_destroy = HYPRE_ILUDestroy;
   }
-  else if( m_parameters.mgr.strategy == "CompositionalMultiphaseReservoir" )
+  else if( m_parameters.mgr.strategy == "CompositionalMultiphaseReservoirFVM" )
   {
     // Labels description stored in point_marker_array
     //                0 = reservoir pressure
@@ -433,16 +432,11 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_bsize = numResLabels + numWellLabels;
     mgr_nlevels = 3;
-    ////////////
     HYPRE_Int mgr_pmax_elmts = 15;
-    ////////////
 
     /* options for solvers at each level */
     HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
-    ////////////
-    //HYPRE_Int mgr_num_gsmooth_sweeps = 1;
     HYPRE_Int mgr_num_gsmooth_sweeps = 0;
-    ////////////
 
     mgr_level_interp_type.resize( mgr_nlevels );
     mgr_level_interp_type[0] = 2;
@@ -497,17 +491,8 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
       mgr_cindexes[iLevel] = lv_cindexes[iLevel].data();
     }
 
-    /*
-       GEOSX_LAI_CHECK_ERROR( HYPRE_ILUCreate( &aux_precond ) );
-       GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( aux_precond, 0 ) ); // Block Jacobi - ILU
-       GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetLevelOfFill( aux_precond, 0 ) );
-       GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetMaxIter( aux_precond, 1 ) );
-       GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetTol( aux_precond, 0.0 ) );
-     */
-
-    ///////////
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRDirectSolverCreate( &aux_precond ) );
-    ///////////
+
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCpointsByPointMarkerArray( m_precond, mgr_bsize, mgr_nlevels,
                                                                   mgr_num_cindexes.data(),
                                                                   mgr_cindexes.data(),
@@ -515,26 +500,119 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelFRelaxMethod( m_precond, mgr_level_frelax_method.data() ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( m_precond, 1 ));
-    ///////////
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( m_precond, mgr_pmax_elmts ));
-    ///////////
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( m_precond, mgr_level_interp_type.data() ) );
-    ///////////
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( m_precond, mgr_coarse_grid_method.data() ) );
-    ///////////
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetGlobalsmoothType( m_precond, mgr_gsmooth_type ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( m_precond, mgr_num_gsmooth_sweeps ) );
-    /*
-       GEOSX_LAI_CHECK_ERROR(
-       HYPRE_MGRSetCoarseSolver( m_precond,
-                                (HYPRE_PtrToParSolverFcn)HYPRE_ILUSolve,
-                                (HYPRE_PtrToParSolverFcn)HYPRE_ILUSetup,
+    GEOSX_LAI_CHECK_ERROR(
+      HYPRE_MGRSetCoarseSolver( m_precond,
+                                (HYPRE_PtrToParSolverFcn)HYPRE_MGRDirectSolverSolve,
+                                (HYPRE_PtrToParSolverFcn)HYPRE_MGRDirectSolverSetup,
                                 aux_precond )
-       );
+      );
+    m_functions->aux_destroy = HYPRE_MGRDirectSolverDestroy;
+  }
+  else if( m_parameters.mgr.strategy == "CompositionalMultiphaseReservoirHybridFVM" )
+  {
+    HYPRE_Int numResCellCenteredLabels = LvArray::integerConversion< HYPRE_Int >( numComponentsPerField[0] );
+    HYPRE_Int numResFaceCenteredLabels = LvArray::integerConversion< HYPRE_Int >( numComponentsPerField[1] );
+    HYPRE_Int numResLabels = numResCellCenteredLabels + numResFaceCenteredLabels;
+    HYPRE_Int numWellLabels = LvArray::integerConversion< HYPRE_Int >( numComponentsPerField[2] );
 
-       m_functions->aux_destroy = HYPRE_ILUDestroy;
-     */
+    mgr_bsize = numResLabels + numWellLabels;
+    mgr_nlevels = 4;
+    HYPRE_Int mgr_pmax_elmts = 15;
+
+    /* options for solvers at each level */
+    HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
+    HYPRE_Int mgr_num_gsmooth_sweeps = 0;
+
+    mgr_level_interp_type.resize( mgr_nlevels );
+    mgr_level_interp_type[0] = 2;
+    mgr_level_interp_type[1] = 2;
+    mgr_level_interp_type[2] = 2;
+    mgr_level_interp_type[3] = 2;
+
+    mgr_coarse_grid_method.resize( mgr_nlevels );
+    mgr_coarse_grid_method[0] = 1; //diagonal sparsification
+    mgr_coarse_grid_method[1] = 1; //diagonal sparsification
+    mgr_coarse_grid_method[2] = 1; //diagonal sparsification
+    mgr_coarse_grid_method[3] = 0; //diagonal sparsification
+
+    mgr_level_frelax_method.resize( mgr_nlevels );
+    mgr_level_frelax_method[0] = 0; // Jacobi
+    mgr_level_frelax_method[1] = 0; // Jacobi
+    mgr_level_frelax_method[2] = 0; // Jacobi
+    mgr_level_frelax_method[3] = 2; // AMG V-cycle
+
+    mgr_num_cindexes.resize( mgr_nlevels );
+    mgr_num_cindexes[0] = mgr_bsize - 1; // eliminate the last density in the reservoir block
+    mgr_num_cindexes[1] = mgr_bsize - numResCellCenteredLabels + 1; // eliminate all densities reservoir block
+    mgr_num_cindexes[2] = mgr_bsize - numResCellCenteredLabels; // eliminate reservoir cell-centered pressure
+    mgr_num_cindexes[3] = mgr_bsize - numResLabels; // eliminate reservoir face-centered pressure
+
+    lv_cindexes.resize( mgr_nlevels );
+    for( int cid=0; cid < mgr_bsize; cid++ )
+    {
+      // All points except the last reservoir density
+      // which corresponds to the volume constraint equation
+      if( cid != numResCellCenteredLabels - 1 )
+      {
+        std::cout << "adding " << cid << " to level 0" << std::endl;
+        lv_cindexes[0].push_back( cid );
+      }
+    }
+    for( auto & cid : lv_cindexes[0] )
+    {
+      // eliminate the rest of the reservoir densities
+      if( cid == 0 || cid >= numResCellCenteredLabels )
+      {
+        std::cout << "adding " << cid << " to level 1" << std::endl;
+        lv_cindexes[1].push_back( cid );
+      }
+    }
+    for( auto & cid : lv_cindexes[1] )
+    {
+      // eliminate the reservoir cell-centered pressure
+      if( cid != 0 )
+      {
+        std::cout << "adding " << cid << " to level 2" << std::endl;
+        lv_cindexes[2].push_back( cid );
+      }
+    }
+    for( auto & cid : lv_cindexes[2] )
+    {
+      // eliminate the reservoir face-centered pressure
+      if( cid != numResLabels - 1 )
+      {
+        std::cout << "adding " << cid << " to level 3" << std::endl;
+        lv_cindexes[3].push_back( cid );
+      }
+    }
+
+    mgr_cindexes.resize( mgr_nlevels );
+    for( HYPRE_Int iLevel = 0; iLevel < mgr_nlevels; ++iLevel )
+    {
+      mgr_cindexes[iLevel] = lv_cindexes[iLevel].data();
+    }
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRDirectSolverCreate( &aux_precond ) );
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCpointsByPointMarkerArray( m_precond, mgr_bsize, mgr_nlevels,
+                                                                  mgr_num_cindexes.data(),
+                                                                  mgr_cindexes.data(),
+                                                                  m_auxData->point_marker_array.data() ) );
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelFRelaxMethod( m_precond, mgr_level_frelax_method.data() ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( m_precond, 1 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( m_precond, mgr_pmax_elmts ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( m_precond, mgr_level_interp_type.data() ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( m_precond, mgr_coarse_grid_method.data() ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetGlobalsmoothType( m_precond, mgr_gsmooth_type ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( m_precond, mgr_num_gsmooth_sweeps ) );
     GEOSX_LAI_CHECK_ERROR(
       HYPRE_MGRSetCoarseSolver( m_precond,
                                 (HYPRE_PtrToParSolverFcn)HYPRE_MGRDirectSolverSolve,
@@ -571,7 +649,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     /* options for solvers at each level */
     HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
-    HYPRE_Int mgr_num_gsmooth_sweeps = 0;
+    HYPRE_Int mgr_num_gsmooth_sweeps = 0; // why does setting this to "1" have such a bad impact on convergence??
 
     mgr_level_interp_type.resize( mgr_nlevels );
     mgr_level_interp_type[0] = 2;
@@ -580,7 +658,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_level_frelax_method.resize( mgr_nlevels );
     mgr_level_frelax_method[0] = 0; // Jacobi
-    mgr_level_frelax_method[1] = 16; // l1Jacobi
+    mgr_level_frelax_method[1] = 16; // Jacobi
     mgr_level_frelax_method[2] = 16; // TODO: understand the different possibilities here. Should I use an AMG V-cycle?
 
     mgr_num_cindexes.resize( mgr_nlevels );

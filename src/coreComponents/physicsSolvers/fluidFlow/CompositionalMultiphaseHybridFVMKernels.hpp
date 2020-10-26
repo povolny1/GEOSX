@@ -549,6 +549,7 @@ struct ResidualNormKernel
             {
               sumMobOld += phaseMobOld[er][esr][ei][ip];
             }
+
             real64 const totalMobOld = ( sumMobOld < 1e-3 ) ? 1e-3 : sumMobOld;
             normalizer += elemVolume[er][esr][ei] / totalMobOld;
             elemCounter++;

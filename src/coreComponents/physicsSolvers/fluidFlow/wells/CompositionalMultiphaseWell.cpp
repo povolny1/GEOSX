@@ -526,7 +526,7 @@ void CompositionalMultiphaseWell::UpdateBHPAndVolRatesForConstraints( WellElemen
       real64 const phaseDensInv = 1.0 / phaseDens[k][0][ip];
       real64 const phaseFracTimesPhaseDensInv = phaseFrac[k][0][ip] * phaseDensInv;
       currentPhaseVolRate[ip] = currentTotalMassRate * phaseFracTimesPhaseDensInv;
-      dCurrentPhaseVolRate_dPres[ip] = 0; // assume that phase density and phase frac are computed with a fixed pressure
+      dCurrentPhaseVolRate_dPres[ip] = 0.0; // assume that phase density and phase frac are computed with a fixed pressure
       dCurrentPhaseVolRate_dRate[ip] = phaseFracTimesPhaseDensInv;
       for( localIndex ic = 0; ic < NC; ++ic )
       {

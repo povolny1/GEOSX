@@ -1351,7 +1351,7 @@ struct ResidualNormKernel
     real64 const targetRate = wellControls.GetTargetRate();
     real64 const targetOilRate = wellControls.GetTargetOilRate();
     real64 const absTargetRate = fabs( targetRate );
-    real64 const absTargetOilRate = fabs( targetOilRate );
+    real64 const absTargetOilRate = ( fabs( targetOilRate ) > 0 ) ? fabs( targetOilRate ) : absTargetRate;
 
     RAJA::ReduceSum< REDUCE_POLICY, real64 > sumScaled( 0.0 );
 
@@ -1392,12 +1392,13 @@ struct ResidualNormKernel
             // did not seem to make sense to use the mass in the well elem for the normalization
             // since there is no accumulation in the well model. Hence the rates are used here.
             // TODO: use old densities for the normalization
-            if( wellType == WellControls::Type::PRODUCER ) // only OILVOLRATE is supported for now
+            if( wellType == WellControls::Type::PRODUCER && oilPhaseIndex >= 0 ) // only OILVOLRATE is supported for now
             {
               normalizer = dt * absTargetOilRate * wellElemPhaseDens[iwelem][0][oilPhaseIndex];
             }
             else // Type::INJECTOR, only TOTALVOLRATE is supported for now
             {
+
               normalizer = dt * absTargetRate * wellElemTotalDens[iwelem][0];
             }
           }
