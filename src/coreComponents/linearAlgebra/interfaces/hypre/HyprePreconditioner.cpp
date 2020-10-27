@@ -516,6 +516,28 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
   }
   else if( m_parameters.mgr.strategy == "CompositionalMultiphaseReservoirHybridFVM" )
   {
+    // Labels description stored in point_marker_array
+    //                         0 = pressure
+    //                         1 = density
+    //                       ... = ... (densities)
+    // numCellCenteredLabels - 1 = density
+    //          numResLabels - 1 = face pressure
+    //              numResLabels = well pressure
+    //                         1 = well density
+    //                       ... = ... (densities)
+    //             numLabels - 1 = well rate
+
+    //
+    // 4-level MGR reduction strategy inspired from CompositionalMultiphaseReservoir
+    // 1st level: eliminate the density associated with the volume constraint
+    // 2nd level: eliminate the rest of the densities
+    // 3rd level: eliminate the cell-centered pressure
+    // 4th level: eliminate the face-centered pressure
+    // The coarse grid is the well system and is solved with a direct solver
+    //
+    // TODO:
+    // - Understand what I am doing
+
     HYPRE_Int numResCellCenteredLabels = LvArray::integerConversion< HYPRE_Int >( numComponentsPerField[0] );
     HYPRE_Int numResFaceCenteredLabels = LvArray::integerConversion< HYPRE_Int >( numComponentsPerField[1] );
     HYPRE_Int numResLabels = numResCellCenteredLabels + numResFaceCenteredLabels;
@@ -523,7 +545,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_bsize = numResLabels + numWellLabels;
     mgr_nlevels = 4;
-    HYPRE_Int mgr_pmax_elmts = 15;
 
     /* options for solvers at each level */
     HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
@@ -534,12 +555,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
     mgr_level_interp_type[1] = 2;
     mgr_level_interp_type[2] = 2;
     mgr_level_interp_type[3] = 2;
-
-    mgr_coarse_grid_method.resize( mgr_nlevels );
-    mgr_coarse_grid_method[0] = 1; //diagonal sparsification
-    mgr_coarse_grid_method[1] = 1; //diagonal sparsification
-    mgr_coarse_grid_method[2] = 1; //diagonal sparsification
-    mgr_coarse_grid_method[3] = 0; //diagonal sparsification
 
     mgr_level_frelax_method.resize( mgr_nlevels );
     mgr_level_frelax_method[0] = 0; // Jacobi
@@ -560,7 +575,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
       // which corresponds to the volume constraint equation
       if( cid != numResCellCenteredLabels - 1 )
       {
-        std::cout << "adding " << cid << " to level 0" << std::endl;
         lv_cindexes[0].push_back( cid );
       }
     }
@@ -569,7 +583,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
       // eliminate the rest of the reservoir densities
       if( cid == 0 || cid >= numResCellCenteredLabels )
       {
-        std::cout << "adding " << cid << " to level 1" << std::endl;
         lv_cindexes[1].push_back( cid );
       }
     }
@@ -578,7 +591,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
       // eliminate the reservoir cell-centered pressure
       if( cid != 0 )
       {
-        std::cout << "adding " << cid << " to level 2" << std::endl;
         lv_cindexes[2].push_back( cid );
       }
     }
@@ -587,7 +599,6 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
       // eliminate the reservoir face-centered pressure
       if( cid != numResLabels - 1 )
       {
-        std::cout << "adding " << cid << " to level 3" << std::endl;
         lv_cindexes[3].push_back( cid );
       }
     }
@@ -607,10 +618,9 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelFRelaxMethod( m_precond, mgr_level_frelax_method.data() ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( m_precond, 1 ));
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( m_precond, mgr_pmax_elmts ));
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( m_precond, 0 ));
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( m_precond, mgr_level_interp_type.data() ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( m_precond, mgr_coarse_grid_method.data() ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetGlobalsmoothType( m_precond, mgr_gsmooth_type ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( m_precond, mgr_num_gsmooth_sweeps ) );
     GEOSX_LAI_CHECK_ERROR(
@@ -630,7 +640,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
     // numCellCenteredLabels - 1 = density
     // numLabels - 1             = face pressure
     //
-    // 3-level MGR reduction strategy inspired from CompositionalMultiphaseReservoir
+    // 3-level MGR reduction strategy inspired from CompositionalMultiphaseFVM
     // 1st level: eliminate the density associated with the volume constraint
     // 2nd level: eliminate the rest of the densities
     // 3rd level: eliminate the cell-centered pressure
@@ -658,8 +668,8 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_level_frelax_method.resize( mgr_nlevels );
     mgr_level_frelax_method[0] = 0; // Jacobi
-    mgr_level_frelax_method[1] = 16; // Jacobi
-    mgr_level_frelax_method[2] = 16; // TODO: understand the different possibilities here. Should I use an AMG V-cycle?
+    mgr_level_frelax_method[1] = 0; // Jacobi
+    mgr_level_frelax_method[2] = 0; // Jacobi
 
     mgr_num_cindexes.resize( mgr_nlevels );
     mgr_num_cindexes[0] = mgr_bsize - 1; // eliminate the last density
