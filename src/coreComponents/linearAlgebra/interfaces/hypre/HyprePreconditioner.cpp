@@ -545,6 +545,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_bsize = numResLabels + numWellLabels;
     mgr_nlevels = 4;
+    HYPRE_Int mgr_pmax_elmts = 15;
 
     /* options for solvers at each level */
     HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
@@ -555,6 +556,12 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
     mgr_level_interp_type[1] = 2;
     mgr_level_interp_type[2] = 2;
     mgr_level_interp_type[3] = 2;
+
+    mgr_coarse_grid_method.resize( mgr_nlevels );
+    mgr_coarse_grid_method[0] = 1;
+    mgr_coarse_grid_method[1] = 1;
+    mgr_coarse_grid_method[2] = 1;
+    mgr_coarse_grid_method[3] = 0;
 
     mgr_level_frelax_method.resize( mgr_nlevels );
     mgr_level_frelax_method[0] = 0; // Jacobi
@@ -618,9 +625,10 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelFRelaxMethod( m_precond, mgr_level_frelax_method.data() ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( m_precond, 1 ));
-    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
-    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( m_precond, 0 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( m_precond, mgr_pmax_elmts ));
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( m_precond, mgr_level_interp_type.data() ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( m_precond, mgr_coarse_grid_method.data() ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetGlobalsmoothType( m_precond, mgr_gsmooth_type ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( m_precond, mgr_num_gsmooth_sweeps ) );
     GEOSX_LAI_CHECK_ERROR(
