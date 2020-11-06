@@ -391,7 +391,6 @@ struct ResidualNormKernel
     localResidualNorm = 0.0;
 
     RAJA::ReduceSum< REDUCE_POLICY, real64 > localSum( 0.0 );
-
     forAll< POLICY >( dofNumber.size(), [=] GEOSX_HOST_DEVICE ( localIndex const ei )
     {
       if( ghostRank[ei] < 0 )

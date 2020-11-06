@@ -301,7 +301,7 @@ public:
    * from prescribed intermediate values (i.e. global densities from global fractions)
    * and any applicable hydrostatic equilibration of the domain
    */
-  void InitializeFluidState( MeshLevel & mesh ) const;
+  virtual void InitializeFluidState( MeshLevel & mesh ) const;
 
   /**
    * @brief Backup current values of all constitutive fields that participate in the accumulation term

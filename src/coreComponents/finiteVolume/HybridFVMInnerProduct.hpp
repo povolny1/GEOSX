@@ -299,10 +299,13 @@ struct QTPFACellInnerProductKernel
                                                      workb_numFacesByNumFaces,
                                                      worka_numFacesByNumFaces );
     LvArray::tensorOps::scale< NF, NF >( transMatrix, 1 / elemVolume );
+
     LvArray::tensorOps::Rij_add_AikBkj< NF, NF, NF >( transMatrix,
                                                       worka_numFacesByNumFaces,
                                                       workc_numFacesByNumFaces );
+
   }
+
 
 };
 

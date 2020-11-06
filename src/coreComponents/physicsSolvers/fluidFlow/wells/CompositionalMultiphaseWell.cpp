@@ -58,7 +58,7 @@ CompositionalMultiphaseWell::CompositionalMultiphaseWell( const string & name,
   m_useMass( false ),
   m_maxCompFracChange( 1.0 ),
   m_maxRelativePresChange( 0.2 ),
-  m_minScalingFactor( 0.01 ),
+  m_minScalingFactor( 1e-10 ),
   m_allowCompDensChopping( 1 ),
   m_oilPhaseIndex( -1 )
 {
@@ -516,7 +516,7 @@ void CompositionalMultiphaseWell::UpdateBHPAndVolRatesForConstraints( WellElemen
     dCurrentTotalVolRate_dRate = totalDensInv;
     for( localIndex ic = 0; ic < NC; ++ic )
     {
-      dCurrentTotalVolRate_dCompDens[ic] = -currentTotalVolRate * totalDensInv;
+      dCurrentTotalVolRate_dCompDens[ic] = 0;//-currentTotalVolRate * totalDensInv;
     }
 
     // phase volume rate
@@ -967,6 +967,8 @@ CompositionalMultiphaseWell::ScalingForSystemSolution( DomainPartition const & d
       scalingFactor = subRegionScalingFactor;
     }
   } );
+
+  std::cout << "well scaling factor = " << scalingFactor << std::endl;
 
   return LvArray::math::max( MpiWrapper::Min( scalingFactor, MPI_COMM_GEOSX ), m_minScalingFactor );
 }

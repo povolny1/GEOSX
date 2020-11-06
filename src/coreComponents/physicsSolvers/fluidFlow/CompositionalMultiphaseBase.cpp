@@ -53,7 +53,7 @@ CompositionalMultiphaseBase::CompositionalMultiphaseBase( const string & name,
   m_numComponents( 0 ),
   m_capPressureFlag( 0 ),
   m_maxCompFracChange( 1.0 ),
-  m_minScalingFactor( 0.01 ),
+  m_minScalingFactor( 0.05 ),
   m_allowCompDensChopping( 1 )
 {
 //START_SPHINX_INCLUDE_00
@@ -498,6 +498,7 @@ void CompositionalMultiphaseBase::ReadPressureAndCompositionsFromFile( ElementSu
     pressureFile.close();
   }
   counter = 0;
+
   if( compFracFile.is_open() )
   {
     while( std::getline( compFracFile, line ) )
@@ -532,7 +533,7 @@ void CompositionalMultiphaseBase::InitializeFluidState( MeshLevel & mesh ) const
   {
 
     // ugly hack to match exactly Intersect's initial condition
-    ReadPressureAndCompositionsFromFile( subRegion );
+    //ReadPressureAndCompositionsFromFile( subRegion );
 
     // 1. Assume global component fractions have been prescribed.
     // Initialize constitutive state to get fluid density.

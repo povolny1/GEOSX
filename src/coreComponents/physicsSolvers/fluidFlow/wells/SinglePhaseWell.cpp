@@ -148,7 +148,7 @@ void SinglePhaseWell::UpdateBHPAndVolRatesForConstraints( WellElementSubRegion &
   // fluid data
 
   SingleFluidBase & fluid = GetConstitutiveModel< SingleFluidBase >( subRegion, m_fluidModelNames[targetIndex] );
-  arrayView2d< real64 const > const & dens = fluid.density();
+  arrayView2d< real64 const > const & dens = fluid.density().toViewConst();
 
   // control data
 

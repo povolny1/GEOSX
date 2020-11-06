@@ -1444,7 +1444,7 @@ struct SolutionScalingKernel
         // with active rate control, but is useless otherwise
         real64 const pres = wellElemPres[iwelem] + dWellElemPres[iwelem];
         real64 const absPresChange = fabs( localSolution[wellElemDofNumber[iwelem] - rankOffset] );
-        if( pres < eps )
+        if( pres > eps )
         {
           real64 const relativePresChange = fabs( absPresChange ) / pres;
           if( relativePresChange > maxRelativePresChange )

@@ -20,7 +20,7 @@
         solverType="direct"/>
     </CompositionalMultiphaseReservoir>
 
-    <CompositionalMultiphaseFlow
+    <CompositionalMultiphaseFVM
       name="compositionalMultiphaseFlow"
       targetRegions="{ Reservoir }"
       discretization="fluidTPFA"
@@ -162,6 +162,7 @@
       phaseRelPermExponent="{ 2.0, 2.0 }"
       phaseRelPermMaxValue="{ 1.0, 1.0 }"/>
   </Constitutive>
+  <!-- SPHINX_FIELD_CASE_Co2_CONSTITUTIVE_END -->
 
   <!-- SPHINX_FIELD_CASE_Co2_FIELD -->
   <FieldSpecifications>

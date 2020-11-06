@@ -155,6 +155,51 @@ void CompositionalMultiphaseFVM::AssembleFluxTerms( real64 const dt,
   } );
 }
 
+
+real64 CompositionalMultiphaseFVM::CalculateResidualNorm( DomainPartition const & domain,
+                                                          DofManager const & dofManager,
+                                                          arrayView1d< real64 const > const & localRhs )
+{
+  MeshLevel const & mesh = *domain.getMeshBody( 0 )->getMeshLevel( 0 );
+  real64 localResidualNorm = 0.0;
+
+  globalIndex const rankOffset = dofManager.rankOffset();
+  string const dofKey = dofManager.getKey( viewKeyStruct::elemDofFieldString );
+
+  forTargetSubRegions( mesh, [&]( localIndex const, ElementSubRegionBase const & subRegion )
+  {
+    arrayView1d< globalIndex const > dofNumber = subRegion.getReference< array1d< globalIndex > >( dofKey );
+    arrayView1d< integer const > const & elemGhostRank = subRegion.ghostRank();
+    arrayView1d< real64 const > const & volume = subRegion.getElementVolume();
+    arrayView1d< real64 const > const & refPoro = subRegion.getReference< array1d< real64 > >( viewKeyStruct::referencePorosityString );
+    arrayView1d< real64 const > const & totalDensOld = subRegion.getReference< array1d< real64 > >( viewKeyStruct::totalDensityOldString );
+
+    ResidualNormKernel::Launch< parallelDevicePolicy<>,
+                                parallelDeviceReduce >( localRhs,
+                                                        rankOffset,
+                                                        numFluidComponents(),
+                                                        dofNumber,
+                                                        elemGhostRank,
+                                                        refPoro,
+                                                        volume,
+                                                        totalDensOld,
+                                                        localResidualNorm );
+
+  } );
+
+  // compute global residual norm
+  real64 const residual = std::sqrt( MpiWrapper::Sum( localResidualNorm ) );
+
+  if( getLogLevel() >= 1 && logger::internal::rank==0 )
+  {
+    char output[200] = {0};
+    sprintf( output, "    ( Rfluid ) = (%4.2e) ; ", residual );
+    std::cout<<output;
+  }
+
+  return residual;
+}
+
 real64 CompositionalMultiphaseFVM::ScalingForSystemSolution( DomainPartition const & domain,
                                                              DofManager const & dofManager,
                                                              arrayView1d< real64 const > const & localSolution )
@@ -229,51 +274,6 @@ real64 CompositionalMultiphaseFVM::ScalingForSystemSolution( DomainPartition con
   } );
 
   return LvArray::math::max( MpiWrapper::Min( scalingFactor, MPI_COMM_GEOSX ), m_minScalingFactor );
-}
-
-
-real64 CompositionalMultiphaseFVM::CalculateResidualNorm( DomainPartition const & domain,
-                                                          DofManager const & dofManager,
-                                                          arrayView1d< real64 const > const & localRhs )
-{
-  MeshLevel const & mesh = *domain.getMeshBody( 0 )->getMeshLevel( 0 );
-  real64 localResidualNorm = 0.0;
-
-  globalIndex const rankOffset = dofManager.rankOffset();
-  string const dofKey = dofManager.getKey( viewKeyStruct::elemDofFieldString );
-
-  forTargetSubRegions( mesh, [&]( localIndex const, ElementSubRegionBase const & subRegion )
-  {
-    arrayView1d< globalIndex const > dofNumber = subRegion.getReference< array1d< globalIndex > >( dofKey );
-    arrayView1d< integer const > const & elemGhostRank = subRegion.ghostRank();
-    arrayView1d< real64 const > const & volume = subRegion.getElementVolume();
-    arrayView1d< real64 const > const & refPoro = subRegion.getReference< array1d< real64 > >( viewKeyStruct::referencePorosityString );
-    arrayView1d< real64 const > const & totalDensOld = subRegion.getReference< array1d< real64 > >( viewKeyStruct::totalDensityOldString );
-
-    ResidualNormKernel::Launch< parallelDevicePolicy<>,
-                                parallelDeviceReduce >( localRhs,
-                                                        rankOffset,
-                                                        numFluidComponents(),
-                                                        dofNumber,
-                                                        elemGhostRank,
-                                                        refPoro,
-                                                        volume,
-                                                        totalDensOld,
-                                                        localResidualNorm );
-
-  } );
-
-  // compute global residual norm
-  real64 const residual = std::sqrt( MpiWrapper::Sum( localResidualNorm ) );
-
-  if( getLogLevel() >= 1 && logger::internal::rank==0 )
-  {
-    char output[200] = {0};
-    sprintf( output, "    ( Rfluid ) = (%4.2e) ; ", residual );
-    std::cout<<output;
-  }
-
-  return residual;
 }
 
 bool CompositionalMultiphaseFVM::CheckSystemSolution( DomainPartition const & domain,
