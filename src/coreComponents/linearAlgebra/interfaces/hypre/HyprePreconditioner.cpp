@@ -565,8 +565,8 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_level_frelax_method.resize( mgr_nlevels );
     mgr_level_frelax_method[0] = 0; // Jacobi
-    mgr_level_frelax_method[1] = 0; // Jacobi
-    mgr_level_frelax_method[2] = 0; // Jacobi
+    mgr_level_frelax_method[1] = 8; // Jacobi
+    mgr_level_frelax_method[2] = 8; // Jacobi
     mgr_level_frelax_method[3] = 2; // AMG V-cycle
 
     mgr_num_cindexes.resize( mgr_nlevels );

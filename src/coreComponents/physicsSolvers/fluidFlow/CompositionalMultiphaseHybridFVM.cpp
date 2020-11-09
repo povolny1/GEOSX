@@ -508,11 +508,7 @@ real64 CompositionalMultiphaseHybridFVM::ScalingForSystemSolution( DomainPartiti
         real64 const relativePresChange = fabs( absPresChange ) / facePres;
         if( relativePresChange > maxRelativePresChange )
         {
-          //std::cout << "iface = " << iface
-          //	      << " absPresChange = " << absPresChange
-          //          << " facePres = " << facePres
-          //          << std::endl;
-          //minFaceVal.min( maxRelativePresChange / relativePresChange );
+          minFaceVal.min( maxRelativePresChange / relativePresChange );
         }
       }
     }
