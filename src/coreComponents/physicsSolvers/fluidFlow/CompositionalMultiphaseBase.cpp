@@ -475,8 +475,8 @@ void CompositionalMultiphaseBase::ReadPressureAndCompositionsFromFile( ElementSu
   arrayView2d< real64 > const compFrac =
     subRegion.getReference< array2d< real64 > >( viewKeyStruct::globalCompFractionString );
 
-  std::string const pressureFileName = "pres.txt";
-  std::string const compFracFileName = "swat.txt";
+  std::string const pressureFileName = "pres_init_1.txt";
+  std::string const compFracFileName = "swat_init_1.txt";
   std::string line;
   std::ifstream pressureFile( pressureFileName );
   std::ifstream compFracFile( compFracFileName );

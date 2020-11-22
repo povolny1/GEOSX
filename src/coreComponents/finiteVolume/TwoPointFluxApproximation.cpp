@@ -79,6 +79,26 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
 
   ArrayOfArraysView< localIndex const > const & faceToNodes = faceManager.nodeList().toViewConst();
 
+  array1d< real64 > pierre_s_trans( 130427 );
+
+  std::string const transFileName = "trans.txt";
+  std::string line;
+  std::ifstream transFile( transFileName );
+
+  localIndex counter = 0;
+  std::string const delimiter = " ";
+  if( transFile.is_open() )
+  {
+    while( std::getline( transFile, line ) )
+    {
+      real64 const pierre_trans = std::stod( line );
+      pierre_s_trans[counter] = pierre_trans;
+      counter++;
+    }
+    transFile.close();
+  }
+  counter = 0;
+
   // make a list of region indices to be included
   SortedArray< localIndex > regionFilter;
   for( string const & regionName : m_targetRegions )
@@ -92,7 +112,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
   real64 const areaTolerance = lengthTolerance * lengthTolerance;
   real64 const weightTolerance = 1e-30 * lengthTolerance; // TODO: choice of constant based on physics?
 
-  forAll< serialPolicy >( faceManager.size(), [=, &stencil]( localIndex const kf )
+  forAll< serialPolicy >( faceManager.size(), [=, &stencil, &counter]( localIndex const kf )
   {
     // Filter out boundary faces
     if( elemList[kf][0] < 0 || elemList[kf][1] < 0 )
@@ -113,7 +133,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
       return;
     }
 
-    real64 faceCenter[ 3 ], faceNormal[ 3 ], faceConormal[ 3 ], cellToFaceVec[ 3 ];
+    real64 faceCenter[ 3 ], faceNormal[ 3 ], faceConormal[ 3 ], cellToFaceVec[ 3 ], tmp[3];
     real64 const faceArea = computationalGeometry::Centroid_3DPolygon( faceToNodes[kf], X, faceCenter, faceNormal, areaTolerance );
 
     if( faceArea < areaTolerance )
@@ -128,6 +148,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
     stackArray1d< globalIndex, 2 > stencilCellsGlobalIndex( 2 );
 
     real64 faceWeight = 0.0;
+    real64 altFaceWeight = 0.0;
 
     for( localIndex ke = 0; ke < 2; ++ke )
     {
@@ -148,9 +169,41 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
         LvArray::tensorOps::scale< 3 >( faceNormal, -1 );
       }
 
+      ////////////////////
+      localIndex kke = (ke == 0) ? 1 : 0;
+      localIndex const ern  = elemRegionList[kf][kke];
+      localIndex const esrn = elemSubRegionList[kf][kke];
+      localIndex const ein  = elemList[kf][kke];
+      real64 cellToCellVec[3];
+      cellToCellVec[0] = elemCenter[er][esr][ei][0] - elemCenter[ern][esrn][ein][0];
+      cellToCellVec[1] = elemCenter[er][esr][ei][1] - elemCenter[ern][esrn][ein][1];
+      cellToCellVec[2] = elemCenter[er][esr][ei][2] - elemCenter[ern][esrn][ein][2];
+      R1Tensor lineDir( cellToCellVec[0], cellToCellVec[1], cellToCellVec[2] );
+      R1Tensor linePoint( elemCenter[er][esr][ei][0], elemCenter[er][esr][ei][1], elemCenter[er][esr][ei][2] );
+      R1Tensor planeNormal( faceNormal[0], faceNormal[1], faceNormal[2] );
+      R1Tensor planeOrigin( faceCenter[0], faceCenter[1], faceCenter[2] );
+      R1Tensor const interPoint = computationalGeometry::LinePlaneIntersection( lineDir,
+                                                                                linePoint,
+                                                                                planeNormal,
+                                                                                planeOrigin );
+
+      real64 cellToInterVec[ 3 ];
+      cellToInterVec[0] = interPoint[0] - elemCenter[er][esr][ei][0];
+      cellToInterVec[1] = interPoint[1] - elemCenter[er][esr][ei][1];
+      cellToInterVec[2] = interPoint[2] - elemCenter[er][esr][ei][2];
+
+      tmp[0] = faceArea * faceNormal[0] * coefficient[er][esr][ei][0];
+      tmp[1] = faceArea * faceNormal[1] * coefficient[er][esr][ei][1];
+      tmp[2] = faceArea * faceNormal[2] * coefficient[er][esr][ei][2];
+      real64 const magnDir = LvArray::tensorOps::normalize< 3 >( tmp );
+
+      real64 const altC2fDistance = LvArray::tensorOps::normalize< 3 >( cellToInterVec );
+      ////////////////////
+
       real64 const c2fDistance = LvArray::tensorOps::normalize< 3 >( cellToFaceVec );
 
       LvArray::tensorOps::hadamardProduct< 3 >( faceConormal, coefficient[er][esr][ei], faceNormal );
+
       real64 halfWeight = LvArray::tensorOps::AiBi< 3 >( cellToFaceVec, faceConormal );
 
       // correct negative weight issue arising from non-K-orthogonal grids
@@ -161,13 +214,19 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
       }
 
       halfWeight *= faceArea / c2fDistance;
+      real64 const altHalfWeight = magnDir / altC2fDistance;
       halfWeight = std::fmax( halfWeight, weightTolerance );
 
       faceWeight += 1.0 / halfWeight;
+      altFaceWeight += 1.0 / altHalfWeight;
     }
 
     GEOSX_ASSERT( faceWeight > 0.0 );
-    faceWeight = 1.0 / faceWeight;
+    faceWeight = 1.0 / altFaceWeight;
+    altFaceWeight = 1.0 / altFaceWeight;
+
+    faceWeight = pierre_s_trans[counter];
+    counter++;
 
     for( localIndex ke = 0; ke < 2; ++ke )
     {

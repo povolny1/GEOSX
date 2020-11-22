@@ -99,15 +99,48 @@ void PoreVolumeCompressibleSolid::StateUpdateBatchPressure( arrayView1d< real64 
   GEOSX_ASSERT_EQ( dPres.size(), numElems );
 
   ExponentialRelation< real64, ExponentApproximationType::Linear > const relation = m_poreVolumeRelation;
+  GEOSX_UNUSED_VAR( relation );
 
   arrayView2d< real64 > const & pvmult = m_poreVolumeMultiplier;
   arrayView2d< real64 > const & dPVMult_dPres = m_dPVMult_dPressure;
+
+  localIndex const numEntries = 29;
+
+  real64 const x[numEntries] = {
+    26.5e5, 70e5, 289e5, 309e5, 312e5, 330e5, 332e5, 359e5, 360e5, 370e5,
+    380e5, 382e5, 383e5, 390e5, 430e5, 432e5, 433e5, 450e5, 490e5, 491e5,
+    500e5, 600e5, 750e5, 900e5, 1000e5, 1100e5, 1120e5, 1150e5, 1200e5
+  };
+
+  real64 const y[numEntries] = {
+    0.9605, 0.9624, 0.9717, 0.9726, 0.9727, 0.9735, 0.9736, 0.9746, 0.9747, 0.9751,
+    0.9755, 0.9756, 0.9756, 0.9759, 0.9775, 0.9775, 0.9776, 0.9782, 0.9798, 0.9798,
+    0.9802, 0.9839, 0.9892, 0.9941, 0.9972, 1.0000, 1.0005, 1.0014, 1.0027
+  };
 
   forAll< parallelDevicePolicy<> >( numElems, [=] GEOSX_HOST_DEVICE ( localIndex const k )
   {
     for( localIndex q = 0; q < numQuad; ++q )
     {
-      relation.Compute( pres[k] + dPres[k], pvmult[k][q], dPVMult_dPres[k][q] );
+      //relation.Compute( pres[k] + dPres[k], pvmult[k][q], dPVMult_dPres[k][q] );
+      real64 const p = pres[k] + dPres[k];
+      localIndex lowerIndex = 0;
+      localIndex upperIndex = 1;
+      localIndex intervalFound = 0;
+      for( localIndex i = 0; i < numEntries-1; ++i )
+      {
+        intervalFound = ( p > x[lowerIndex] && p <= x[upperIndex] );
+        if( intervalFound )
+        {
+          real64 const a = (y[upperIndex]-y[lowerIndex]) / (x[upperIndex]-x[lowerIndex]);
+          real64 const b = y[lowerIndex];
+          pvmult[k][q] = a * (p-x[lowerIndex]) + b;
+          dPVMult_dPres[k][q] = a;
+        }
+        intervalFound = 0;
+        lowerIndex++;
+        upperIndex++;
+      }
     }
   } );
 }

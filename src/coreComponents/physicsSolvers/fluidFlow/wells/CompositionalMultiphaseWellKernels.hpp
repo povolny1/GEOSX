@@ -896,7 +896,6 @@ struct PerforationKernel
           for( localIndex ic = 0; ic < NC; ++ic )
           {
             compPerfRate[iperf][ic] += flux * resPhaseCompFrac[er][esr][ei][0][ip][ic];
-
             dCompPerfRate_dPres[iperf][CompositionalMultiphaseWell::SubRegionTag::RES][ic] +=
               resPhaseCompFrac[er][esr][ei][0][ip][ic] * dFlux_dP[CompositionalMultiphaseWell::SubRegionTag::RES];
 
@@ -1032,7 +1031,8 @@ struct PerforationKernel
           }
         }
       }
-    } );
+    }
+                      );
   }
 
 };
@@ -1221,7 +1221,7 @@ struct PresCompFracInitializationKernel
       GEOSX_ERROR_IF( compFracSum < 1 - tol || compFracSum > 1 + tol,
                       "Invalid well initialization: sum of component fractions should be between 0 and 1" );
     }
-    else // injector
+    else     // injector
     {
       // use average comp frac from XML file
       for( localIndex ic = 0; ic < NC; ++ic )
@@ -1247,7 +1247,7 @@ struct PresCompFracInitializationKernel
       // if pressure constraint, set the ref pressure at the constraint
       pressureControl = targetBHP;
     }
-    else // rate control
+    else     // rate control
     {
       // if rate constraint, set the ref pressure slightly
       // above/below the target pressure depending on well type
@@ -1436,11 +1436,11 @@ struct ResidualNormKernel
             // did not seem to make sense to use the mass in the well elem for the normalization
             // since there is no accumulation in the well model. Hence the rates are used here.
             // TODO: use old densities for the normalization
-            if( wellType == WellControls::Type::PRODUCER && oilPhaseIndex >= 0 ) // only OILVOLRATE is supported for now
+            if( wellType == WellControls::Type::PRODUCER && oilPhaseIndex >= 0 )     // only OILVOLRATE is supported for now
             {
               normalizer = dt * absTargetOilRate * wellElemPhaseDens[iwelem][0][oilPhaseIndex];
             }
-            else // Type::INJECTOR, only TOTALVOLRATE is supported for now
+            else     // Type::INJECTOR, only TOTALVOLRATE is supported for now
             {
 
               normalizer = dt * absTargetRate * wellElemTotalDens[iwelem][0];
@@ -1607,7 +1607,7 @@ struct SolutionCheckKernel
 };
 
 
-} // end namespace CompositionalMultiphaseWellKernels
+}   // end namespace CompositionalMultiphaseWellKernels
 
 } // end namespace geosx
 

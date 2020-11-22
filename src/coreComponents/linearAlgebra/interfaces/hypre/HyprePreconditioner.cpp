@@ -432,7 +432,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_bsize = numResLabels + numWellLabels;
     mgr_nlevels = 3;
-    HYPRE_Int mgr_pmax_elmts = 15;
+    HYPRE_Int mgr_pmax_elmts = 20;
 
     /* options for solvers at each level */
     HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
