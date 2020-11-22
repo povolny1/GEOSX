@@ -66,10 +66,8 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
                     dPhaseDens_dC[ip] );
   }
 
-
   for( localIndex ifaceLoc = 0; ifaceLoc < NF; ++ifaceLoc )
   {
-
     // now in the following nested loop,
     // we compute the contribution of face jfaceLoc to the one sided total volumetric flux at face iface
     for( localIndex jfaceLoc = 0; jfaceLoc < NF; ++jfaceLoc )
@@ -107,7 +105,6 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
 
         // potential difference
         real64 const phasePotDif = presDif - phaseGravDif;
-
         real64 const phaseMobPotDif = elemPhaseMob[ip] * phasePotDif;
         real64 const dPhaseMobPotDif_dPres = dElemPhaseMob_dPres[ip] * phasePotDif
                                              + elemPhaseMob[ip] * (dPresDif_dPres - dPhaseGravDif_dPres);
@@ -121,7 +118,6 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
         // this is going to store T \sum_p \lambda_p (\nabla p - \rho_p g \nabla d)
         oneSidedVolFlux[ifaceLoc] = oneSidedVolFlux[ifaceLoc]
                                     + transMatrix[ifaceLoc][jfaceLoc] * phaseMobPotDif;
-
         dOneSidedVolFlux_dPres[ifaceLoc] = dOneSidedVolFlux_dPres[ifaceLoc]
                                            + transMatrix[ifaceLoc][jfaceLoc] * dPhaseMobPotDif_dPres;
         dOneSidedVolFlux_dFacePres[ifaceLoc][jfaceLoc] = dOneSidedVolFlux_dFacePres[ifaceLoc][jfaceLoc]

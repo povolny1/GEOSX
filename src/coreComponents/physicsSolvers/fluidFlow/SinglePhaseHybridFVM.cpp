@@ -104,7 +104,6 @@ void SinglePhaseHybridFVM::InitializePostInitialConditions_PreSubGroups( Group *
 
   GEOSX_ERROR_IF_LE_MSG( minVal.get(), 0.0,
                          "The transmissibility multipliers used in SinglePhaseHybridFVM must strictly larger than 0.0" );
-
 }
 
 void SinglePhaseHybridFVM::ImplicitStepSetup( real64 const & time_n,

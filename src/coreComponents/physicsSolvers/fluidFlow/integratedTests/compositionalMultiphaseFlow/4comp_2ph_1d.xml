@@ -20,7 +20,6 @@
         directParallel="0"
         logLevel="0"/>
     </CompositionalMultiphaseFVM>
-
   </Solvers>
 
   <Mesh>

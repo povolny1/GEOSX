@@ -367,7 +367,7 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     {
       PVTPackage::PhaseProperties const & props = m_fluid.get_PhaseProperties( m_phaseTypes[ip] );
       auto const & phaseMW = props.MolecularWeight;
-      
+
       real64 const nu = phaseFrac.value[ip];
 
       phaseFrac.value[ip] *= phaseMW.value;
