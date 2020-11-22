@@ -209,7 +209,7 @@ void WellSolverBase::PrecomputeData( DomainPartition & domain )
     WellControls & wellControls = GetWellControls( subRegion );
     real64 const refElev = wellControls.GetReferenceElevation();
 
-    arrayView2d< real64 const > const wellElemLocation = subRegion.getElementCenter().toViewConst();
+    arrayView2d< real64 const > const wellElemLocation = subRegion.getElementCenter();
 
     arrayView1d< real64 > const wellElemGravCoef =
       subRegion.getReference< array1d< real64 > >( viewKeyStruct::gravityCoefString );

@@ -21,13 +21,17 @@
 
 #include "constitutive/fluid/MultiFluidBase.hpp"
 
-#include <memory>
-
+// There is something wrong in the way we are building.
+// If I include, I have to add the PVT dependency so far away...
+// Therefore I forward declare...
 namespace PVTPackage
 {
 class MultiphaseSystem;
+
 enum class PHASE_TYPE : int;
 }
+
+#include <memory>
 
 namespace geosx
 {

@@ -25,7 +25,6 @@
 #include "MultiphaseSystem/BlackOilMultiphaseSystem.hpp"
 #include "MultiphaseSystem/DeadOilMultiphaseSystem.hpp"
 
-
 using namespace PVTPackage;
 
 namespace geosx

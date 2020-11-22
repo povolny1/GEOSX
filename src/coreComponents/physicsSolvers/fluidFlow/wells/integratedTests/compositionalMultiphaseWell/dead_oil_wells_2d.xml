@@ -12,9 +12,9 @@
       <NonlinearSolverParameters
         newtonMaxIter="40"/>
       <LinearSolverParameters
-        solverType="fgmres"
-        preconditionerType="mgr"  
-        logLevel="1"/>
+        solverType="direct"
+        directParallel="0"
+        logLevel="0"/>
     </CompositionalMultiphaseReservoir>
 
     <CompositionalMultiphaseFVM

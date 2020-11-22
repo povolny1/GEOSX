@@ -12,10 +12,6 @@
  * ------------------------------------------------------------------------------------------------------------
  */
 
-/**
- * @file MultiFluidPVTPackageWrapper.cpp
- */
-
 #include "MultiFluidPVTPackageWrapper.hpp"
 
 #include "constitutive/fluid/MultiFluidUtils.hpp"
@@ -33,21 +29,22 @@ using namespace dataRepository;
 namespace constitutive
 {
 
-MultiFluidPVTPackageWrapper::MultiFluidPVTPackageWrapper( std::string const & name, Group * const parent )
-  : MultiFluidBase( name, parent ),
+MultiFluidPVTPackageWrapper::MultiFluidPVTPackageWrapper( std::string const & name,
+                                                          Group * const parent )
+  :
+  MultiFluidBase( name, parent ),
   m_fluid( nullptr )
-{}
+{ }
 
 MultiFluidPVTPackageWrapper::~MultiFluidPVTPackageWrapper()
-{}
+{ }
 
 namespace
 {
 
 PVTPackage::PHASE_TYPE getPVTPackagePhaseType( string const & name )
 {
-  static std::map< string, PVTPackage::PHASE_TYPE > const phaseTypes =
-  {
+  static std::map< string, PVTPackage::PHASE_TYPE > const phaseTypes{
     { "gas", PVTPackage::PHASE_TYPE::GAS },
     { "oil", PVTPackage::PHASE_TYPE::OIL },
     { "water", PVTPackage::PHASE_TYPE::LIQUID_WATER_RICH }
@@ -176,7 +173,8 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     for( localIndex ip = 0; ip < NP; ++ip )
     {
       PVTPackage::PhaseProperties const & props = m_fluid.get_PhaseProperties( m_phaseTypes[ip] );
-      real64 const phaseMWInv = 1.0 / props.MolecularWeight.value;
+      auto const & phaseMW = props.MolecularWeight;
+      real64 const phaseMWInv = 1.0 / phaseMW.value;
 
       for( localIndex ic = 0; ic < NC; ++ic )
       {
@@ -225,35 +223,35 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
                                                  arraySlice1d< real64, 0 > const & dTotalDensity_dGlobalCompFraction ) const
 {
 // 0. make shortcut structs to avoid long names (TODO maybe remove)
-  CompositionalVarContainer< 1 > phaseFrac {
+  CompositionalVarContainer< 1 > phaseFrac{
     phaseFraction,
     dPhaseFraction_dPressure,
     dPhaseFraction_dTemperature,
     dPhaseFraction_dGlobalCompFraction
   };
 
-  CompositionalVarContainer< 1 > phaseDens {
+  CompositionalVarContainer< 1 > phaseDens{
     phaseDensity,
     dPhaseDensity_dPressure,
     dPhaseDensity_dTemperature,
     dPhaseDensity_dGlobalCompFraction
   };
 
-  CompositionalVarContainer< 1 > phaseVisc {
+  CompositionalVarContainer< 1 > phaseVisc{
     phaseViscosity,
     dPhaseViscosity_dPressure,
     dPhaseViscosity_dTemperature,
     dPhaseViscosity_dGlobalCompFraction
   };
 
-  CompositionalVarContainer< 2 > phaseCompFrac {
+  CompositionalVarContainer< 2 > phaseCompFrac{
     phaseCompFraction,
     dPhaseCompFraction_dPressure,
     dPhaseCompFraction_dTemperature,
     dPhaseCompFraction_dGlobalCompFraction
   };
 
-  CompositionalVarContainer< 0 > totalDens {
+  CompositionalVarContainer< 0 > totalDens{
     totalDensity,
     dTotalDensity_dPressure,
     dTotalDensity_dTemperature,
@@ -349,7 +347,9 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
       phaseCompFrac.dTemp[ip][jc] = comp.dT[jc];
 
       for( localIndex ic = 0; ic < NC; ++ic )
+      {
         phaseCompFrac.dComp[ip][ic][jc] = comp.dz[ic][jc];
+      }
     }
   }
 
@@ -366,8 +366,8 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     for( localIndex ip = 0; ip < NP; ++ip )
     {
       PVTPackage::PhaseProperties const & props = m_fluid.get_PhaseProperties( m_phaseTypes[ip] );
-
       auto const & phaseMW = props.MolecularWeight;
+      
       real64 const nu = phaseFrac.value[ip];
 
       phaseFrac.value[ip] *= phaseMW.value;
@@ -390,12 +390,12 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     for( localIndex ip = 0; ip < NP; ++ip )
     {
       phaseFrac.value[ip] *= totalMassInv;
-      phaseFrac.dPres[ip] = (phaseFrac.dPres[ip] - phaseFrac.value[ip] * dTotalMass_dP) * totalMassInv;
-      phaseFrac.dTemp[ip] = (phaseFrac.dTemp[ip] - phaseFrac.value[ip] * dTotalMass_dT) * totalMassInv;
+      phaseFrac.dPres[ip] = ( phaseFrac.dPres[ip] - phaseFrac.value[ip] * dTotalMass_dP ) * totalMassInv;
+      phaseFrac.dTemp[ip] = ( phaseFrac.dTemp[ip] - phaseFrac.value[ip] * dTotalMass_dT ) * totalMassInv;
 
       for( localIndex jc = 0; jc < NC; ++jc )
       {
-        phaseFrac.dComp[ip][jc] = (phaseFrac.dComp[ip][jc] - phaseFrac.value[ip] * dTotalMass_dC[jc]) * totalMassInv;
+        phaseFrac.dComp[ip][jc] = ( phaseFrac.dComp[ip][jc] - phaseFrac.value[ip] * dTotalMass_dC[jc] ) * totalMassInv;
       }
     }
 
@@ -403,7 +403,6 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
     for( localIndex ip = 0; ip < NP; ++ip )
     {
       PVTPackage::PhaseProperties const & props = m_fluid.get_PhaseProperties( m_phaseTypes[ip] );
-
       auto const & phaseMW = props.MolecularWeight;
       real64 const phaseMWInv = 1.0 / phaseMW.value;
 
@@ -414,14 +413,14 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
 
         phaseCompFrac.value[ip][ic] = phaseCompFrac.value[ip][ic] * compMW * phaseMWInv;
         phaseCompFrac.dPres[ip][ic] =
-          (phaseCompFrac.dPres[ip][ic] * compMW - phaseCompFrac.value[ip][ic] * phaseMW.dP) * phaseMWInv;
+          ( phaseCompFrac.dPres[ip][ic] * compMW - phaseCompFrac.value[ip][ic] * phaseMW.dP ) * phaseMWInv;
         phaseCompFrac.dTemp[ip][ic] =
-          (phaseCompFrac.dTemp[ip][ic] * compMW - phaseCompFrac.value[ip][ic] * phaseMW.dT) * phaseMWInv;
+          ( phaseCompFrac.dTemp[ip][ic] * compMW - phaseCompFrac.value[ip][ic] * phaseMW.dT ) * phaseMWInv;
 
         for( localIndex jc = 0; jc < NC; ++jc )
         {
           phaseCompFrac.dComp[ip][ic][jc] =
-            (phaseCompFrac.dComp[ip][ic][jc] * compMW - phaseCompFrac.value[ip][ic] * phaseMW.dz[jc]) * phaseMWInv;
+            ( phaseCompFrac.dComp[ip][ic][jc] * compMW - phaseCompFrac.value[ip][ic] * phaseMW.dz[jc] ) * phaseMWInv;
         }
       }
     }
@@ -457,12 +456,12 @@ void MultiFluidPVTPackageWrapperUpdate::Compute( real64 pressure,
       real64 const value = phaseFrac.value[ip] * densInv;
 
       totalDens.value += value;
-      totalDens.dPres += (phaseFrac.dPres[ip] - value * phaseDens.dPres[ip]) * densInv;
-      totalDens.dTemp += (phaseFrac.dTemp[ip] - value * phaseDens.dTemp[ip]) * densInv;
+      totalDens.dPres += ( phaseFrac.dPres[ip] - value * phaseDens.dPres[ip] ) * densInv;
+      totalDens.dTemp += ( phaseFrac.dTemp[ip] - value * phaseDens.dTemp[ip] ) * densInv;
 
       for( localIndex jc = 0; jc < NC; ++jc )
       {
-        totalDens.dComp[jc] += (phaseFrac.dComp[ip][jc] - value * phaseDens.dComp[ip][jc]) * densInv;
+        totalDens.dComp[jc] += ( phaseFrac.dComp[ip][jc] - value * phaseDens.dComp[ip][jc] ) * densInv;
       }
     }
 
