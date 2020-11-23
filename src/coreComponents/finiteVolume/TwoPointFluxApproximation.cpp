@@ -56,7 +56,7 @@ void TwoPointFluxApproximation::registerCellStencil( Group & stencilGroup ) cons
 void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
 {
   NodeManager const & nodeManager = *mesh.getNodeManager();
-  FaceManager const & faceManager = *mesh.getFaceManager();
+  FaceManager & faceManager = *mesh.getFaceManager();
   ElementRegionManager const & elemManager = *mesh.getElemManager();
 
   CellElementStencilTPFA & stencil = getStencil< CellElementStencilTPFA >( mesh, viewKeyStruct::cellStencilString );
@@ -66,7 +66,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
   arrayView2d< localIndex const > const & elemList = faceManager.elementList();
   arrayView2d< real64 const, nodes::REFERENCE_POSITION_USD > const & X = nodeManager.referencePosition();
 
-  arrayView1d< real64 const > const & transMultiplier =
+  arrayView1d< real64 > const & transMultiplier =
     faceManager.getReference< array1d< real64 > >( m_coeffName + viewKeyStruct::transMultiplierString );
 
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > const elemCenter =
@@ -116,7 +116,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
   real64 const areaTolerance = lengthTolerance * lengthTolerance;
   real64 const weightTolerance = 1e-30 * lengthTolerance; // TODO: choice of constant based on physics?
 
-  forAll< serialPolicy >( faceManager.size(), [=, &stencil, &counter]( localIndex const kf )
+  forAll< serialPolicy >( faceManager.size(), [=, &stencil, &counter, &transMultiplier]( localIndex const kf )
   {
     // Filter out boundary faces
     if( elemList[kf][0] < 0 || elemList[kf][1] < 0 || isZero( transMultiplier[kf] ) )
@@ -226,10 +226,20 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
     }
 
     GEOSX_ASSERT( faceWeight > 0.0 );
-    faceWeight = 1.0 / altFaceWeight;
+    faceWeight = 1.0 / faceWeight;
     altFaceWeight = 1.0 / altFaceWeight;
 
     faceWeight = pierre_s_trans[counter];
+
+    if ( isZero( pierre_s_trans[counter] ) )
+    {
+      transMultiplier[kf] = 1e-12;
+    }
+    else
+    {
+      transMultiplier[kf] = 1.0;
+    }
+    
     counter++;
 
     for( localIndex ke = 0; ke < 2; ++ke )
@@ -548,7 +558,7 @@ void TwoPointFluxApproximation::addToFractureStencil( MeshLevel & mesh,
       // If the aperture has been set, then we can set the estimate of displacements.
       if( aperture[newElemIndex] < 1e98 )
       {
-        localIndex const faceIndex0 = faceMap( newElemIndex, 0 );
+        localIndex const faceIndex0=  faceMap( newElemIndex, 0 );
         localIndex const faceIndex1 = faceMap( newElemIndex, 1 );
 
         R1Tensor newDisp = faceNormal( faceIndex0 );
