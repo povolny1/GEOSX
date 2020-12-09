@@ -506,13 +506,13 @@ void CompositionalMultiphaseBase::ReadPressureAndCompositionsFromFile( ElementSu
       pos = line.find( delimiter );
       token = line.substr( pos+1, pos+3 );
       real64 pierre_compFrac = std::stod( token );
-      if( pierre_compFrac < 0.0001 )
+      if( pierre_compFrac < 0.000001 )
       {
-        pierre_compFrac = 0.0001;
+        pierre_compFrac = 0.000001;
       }
-      else if( pierre_compFrac > 0.9999 )
+      else if( pierre_compFrac > 0.999999 )
       {
-        pierre_compFrac = 0.9999;
+        pierre_compFrac = 0.999999;
       }
       compFrac[counter][0] = 1.0 - pierre_compFrac;
       compFrac[counter][1] = pierre_compFrac;
