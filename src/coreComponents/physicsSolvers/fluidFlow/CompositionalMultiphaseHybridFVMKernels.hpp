@@ -105,6 +105,9 @@ struct AssemblerKernel
            ElementViewConst< arrayView3d< real64 const > > const & phaseDens,
            ElementViewConst< arrayView3d< real64 const > > const & dPhaseDens_dPres,
            ElementViewConst< arrayView4d< real64 const > > const & dPhaseDens_dCompFrac,
+           ElementViewConst< arrayView3d< real64 const > > const & phaseMassDens,
+           ElementViewConst< arrayView3d< real64 const > > const & dPhaseMassDens_dPres,
+           ElementViewConst< arrayView4d< real64 const > > const & dPhaseMassDens_dCompFrac,
            ElementViewConst< arrayView2d< real64 const > > const & phaseMob,
            ElementViewConst< arrayView2d< real64 const > > const & dPhaseMob_dPres,
            ElementViewConst< arrayView3d< real64 const > > const & dPhaseMob_dCompDens,
@@ -197,6 +200,9 @@ struct FluxKernel
           ElementViewConst< arrayView3d< real64 const > > const & phaseDens,
           ElementViewConst< arrayView3d< real64 const > > const & dPhaseDens_dPres,
           ElementViewConst< arrayView4d< real64 const > > const & dPhaseDens_dCompFrac,
+          ElementViewConst< arrayView3d< real64 const > > const & phaseMassDens,
+          ElementViewConst< arrayView3d< real64 const > > const & dPhaseMassDens_dPres,
+          ElementViewConst< arrayView4d< real64 const > > const & dPhaseMassDens_dCompFrac,
           ElementViewConst< arrayView2d< real64 const > > const & phaseMob,
           ElementViewConst< arrayView2d< real64 const > > const & dPhaseMob_dPres,
           ElementViewConst< arrayView3d< real64 const > > const & dPhaseMob_dCompDens,
@@ -386,7 +392,7 @@ struct PrecomputeKernel
           arrayView2d< real64 const, nodes::REFERENCE_POSITION_USD > const & nodePosition,
           ArrayOfArraysView< localIndex const > const & faceToNodes,
           arrayView2d< real64 const > const & elemCenter,
-          arrayView1d< R1Tensor const > const & elemPerm,
+          arrayView2d< real64 const > const & elemPerm,
           arrayView1d< real64 const > const & elemGravCoef,
           arrayView2d< localIndex const > const & elemToFaces,
           arrayView1d< real64 const > const & transMultiplier,
@@ -419,7 +425,10 @@ struct PrecomputeKernel
 
     forAll< parallelDevicePolicy<> >( faceManagerSize, [=] GEOSX_HOST_DEVICE ( localIndex const iface )
     {
-      mimFaceGravCoef[iface] = mimFaceGravCoefNumerator[iface].get() / mimFaceGravCoefDenominator[iface].get();
+      if( !isZero( mimFaceGravCoefDenominator[iface].get() ) )
+      {
+        mimFaceGravCoef[iface] = mimFaceGravCoefNumerator[iface].get() / mimFaceGravCoefDenominator[iface].get();
+      }
     } );
   }
 };

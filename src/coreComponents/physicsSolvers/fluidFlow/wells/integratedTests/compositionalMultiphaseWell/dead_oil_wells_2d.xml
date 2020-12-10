@@ -10,6 +10,7 @@
       initialDt="1e2"
       targetRegions="{ Region1, wellRegion1, wellRegion2, wellRegion3 }">
       <NonlinearSolverParameters
+        newtonTol="1e-8"  
         newtonMaxIter="40"/>
       <LinearSolverParameters
         solverType="direct"
@@ -124,20 +125,21 @@
   </Mesh>
 
   <Events
-    maxTime="1e4">
+    maxTime="5e5">
     <PeriodicEvent
       name="solverApplications"
+      forceDt="5e3"
       target="/Solvers/reservoirSystem"/>
 
     <PeriodicEvent
       name="outputs"
-      timeFrequency="1e5"
+      timeFrequency="5e4"
       targetExactTimestep="1"
       target="/Outputs/siloOutput"/>
 
     <PeriodicEvent
       name="restarts"
-      timeFrequency="5e5"
+      timeFrequency="2.5e5"
       targetExactTimestep="0"
       target="/Outputs/restartOutput"/>
   </Events>

@@ -197,8 +197,8 @@ void CompositionalMultiphaseHybridFVM::PrecomputeData( MeshLevel & mesh )
   {
     arrayView2d< real64 const > const & elemCenter =
       subRegion.template getReference< array2d< real64 > >( CellBlock::viewKeyStruct::elementCenterString );
-    arrayView1d< R1Tensor const > const & elemPerm =
-      subRegion.template getReference< array1d< R1Tensor > >( CompositionalMultiphaseBase::viewKeyStruct::permeabilityString );
+    arrayView2d< real64 const > const & elemPerm =
+      subRegion.template getReference< array2d< real64 > >( CompositionalMultiphaseBase::viewKeyStruct::permeabilityString );
     arrayView1d< real64 const > const elemGravCoef =
       subRegion.template getReference< array1d< real64 > >( viewKeyStruct::gravityCoefString );
     arrayView2d< localIndex const > const & elemToFaces = subRegion.faceList();
@@ -217,6 +217,7 @@ void CompositionalMultiphaseHybridFVM::PrecomputeData( MeshLevel & mesh )
                                                                            mimFaceGravCoefNumerator.toView(),
                                                                            mimFaceGravCoefDenominator.toView(),
                                                                            mimFaceGravCoef );
+
   } );
 
   // check that multipliers are stricly larger than 0, which would work with SinglePhaseFVM, but not with SinglePhaseHybridFVM.
@@ -401,6 +402,9 @@ void CompositionalMultiphaseHybridFVM::AssembleFluxTerms( real64 const dt,
                                         m_phaseDens.toNestedViewConst(),
                                         m_dPhaseDens_dPres.toNestedViewConst(),
                                         m_dPhaseDens_dComp.toNestedViewConst(),
+                                        m_phaseMassDens.toNestedViewConst(),
+                                        m_dPhaseMassDens_dPres.toNestedViewConst(),
+                                        m_dPhaseMassDens_dComp.toNestedViewConst(),
                                         m_phaseMob.toNestedViewConst(),
                                         m_dPhaseMob_dPres.toNestedViewConst(),
                                         m_dPhaseMob_dCompDens.toNestedViewConst(),
