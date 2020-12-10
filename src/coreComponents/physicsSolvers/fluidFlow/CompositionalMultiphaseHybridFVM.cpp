@@ -21,7 +21,8 @@
 #include "common/TimingMacros.hpp"
 #include "constitutive/fluid/MultiFluidBase.hpp"
 #include "constitutive/relativePermeability/RelativePermeabilityBase.hpp"
-#include "finiteVolume/FluxApproximationBase.hpp"
+#include "finiteVolume/HybridMimeticDiscretization.hpp"
+#include "finiteVolume/MimeticInnerProductDispatch.hpp"
 #include "mpiCommunications/CommunicationTools.hpp"
 #include "physicsSolvers/fluidFlow/CompositionalMultiphaseBaseKernels.hpp"
 #include "physicsSolvers/fluidFlow/CompositionalMultiphaseHybridFVMKernels.hpp"
@@ -38,6 +39,7 @@ using namespace dataRepository;
 using namespace constitutive;
 using namespace CompositionalMultiphaseBaseKernels;
 using namespace CompositionalMultiphaseHybridFVMKernels;
+using namespace mimeticInnerProduct;
 
 CompositionalMultiphaseHybridFVM::CompositionalMultiphaseHybridFVM( const std::string & name,
                                                                     Group * const parent ):
@@ -201,14 +203,17 @@ void CompositionalMultiphaseHybridFVM::PrecomputeData( MeshLevel & mesh )
       subRegion.template getReference< array2d< real64 > >( CompositionalMultiphaseBase::viewKeyStruct::permeabilityString );
     arrayView1d< real64 const > const elemGravCoef =
       subRegion.template getReference< array1d< real64 > >( viewKeyStruct::gravityCoefString );
+    arrayView1d< real64 const > const & elemVolume = subRegion.getElementVolume();
     arrayView2d< localIndex const > const & elemToFaces = subRegion.faceList();
 
-    SinglePhaseHybridFVMKernels::KernelLaunchSelector< PrecomputeKernel >( subRegion.numFacesPerElement(),
+    SinglePhaseHybridFVMKernels::KernelLaunchSelector< mimeticInnerProduct::TPFAInnerProduct,
+                                                       PrecomputeKernel >( subRegion.numFacesPerElement(),
                                                                            subRegion.size(),
                                                                            faceManager.size(),
                                                                            nodePosition,
                                                                            faceToNodes,
                                                                            elemCenter,
+                                                                           elemVolume,
                                                                            elemPerm,
                                                                            elemGravCoef,
                                                                            elemToFaces,
@@ -331,6 +336,12 @@ void CompositionalMultiphaseHybridFVM::AssembleFluxTerms( real64 const dt,
   NodeManager const & nodeManager = *mesh.getNodeManager();
   FaceManager const & faceManager = *mesh.getFaceManager();
 
+  NumericalMethodsManager const & numericalMethodManager = domain.getNumericalMethodManager();
+  FiniteVolumeManager const & fvManager = numericalMethodManager.getFiniteVolumeManager();
+  FluxApproximationBase const & fluxApprox = fvManager.getFluxApproximation( m_discretizationName );
+  MimeticInnerProductBase const & mimeticInnerProductBase =
+    fluxApprox.getReference< MimeticInnerProductBase >( HybridMimeticDiscretization::viewKeyStruct::innerProductString );
+
   // node data (for transmissibility computation)
 
   arrayView2d< real64 const, nodes::REFERENCE_POSITION_USD > const & nodePosition = nodeManager.referencePosition();
@@ -383,42 +394,48 @@ void CompositionalMultiphaseHybridFVM::AssembleFluxTerms( real64 const dt,
                                                             ElementRegionBase const &,
                                                             auto const & subRegion )
   {
-    KernelLaunchSelector< FluxKernel >( subRegion.numFacesPerElement(),
-                                        m_numComponents, m_numPhases,
-                                        er, esr, subRegion,
-                                        m_regionFilter.toViewConst(),
-                                        nodePosition,
-                                        elemRegionList,
-                                        elemSubRegionList,
-                                        elemList,
-                                        faceToNodes,
-                                        faceDofNumber,
-                                        faceGhostRank,
-                                        facePres,
-                                        dFacePres,
-                                        faceGravCoef,
-                                        mimFaceGravCoef,
-                                        transMultiplier,
-                                        m_phaseDens.toNestedViewConst(),
-                                        m_dPhaseDens_dPres.toNestedViewConst(),
-                                        m_dPhaseDens_dComp.toNestedViewConst(),
-                                        m_phaseMassDens.toNestedViewConst(),
-                                        m_dPhaseMassDens_dPres.toNestedViewConst(),
-                                        m_dPhaseMassDens_dComp.toNestedViewConst(),
-                                        m_phaseMob.toNestedViewConst(),
-                                        m_dPhaseMob_dPres.toNestedViewConst(),
-                                        m_dPhaseMob_dCompDens.toNestedViewConst(),
-                                        m_dCompFrac_dCompDens.toNestedViewConst(),
-                                        m_phaseCompFrac.toNestedViewConst(),
-                                        m_dPhaseCompFrac_dPres.toNestedViewConst(),
-                                        m_dPhaseCompFrac_dComp.toNestedViewConst(),
-                                        elemDofNumber.toNestedViewConst(),
-                                        dofManager.rankOffset(),
-                                        lengthTolerance,
-                                        dt,
-                                        localMatrix,
-                                        localRhs );
+    mimeticInnerProductDispatch( mimeticInnerProductBase,
+                                 [&] ( auto const mimeticInnerProduct )
+    {
+      using IP_TYPE = TYPEOFREF( mimeticInnerProduct );
 
+      KernelLaunchSelector< IP_TYPE,
+                            FluxKernel >( subRegion.numFacesPerElement(),
+                                          m_numComponents, m_numPhases,
+                                          er, esr, subRegion,
+                                          m_regionFilter.toViewConst(),
+                                          nodePosition,
+                                          elemRegionList,
+                                          elemSubRegionList,
+                                          elemList,
+                                          faceToNodes,
+                                          faceDofNumber,
+                                          faceGhostRank,
+                                          facePres,
+                                          dFacePres,
+                                          faceGravCoef,
+                                          mimFaceGravCoef,
+                                          transMultiplier,
+                                          m_phaseDens.toNestedViewConst(),
+                                          m_dPhaseDens_dPres.toNestedViewConst(),
+                                          m_dPhaseDens_dComp.toNestedViewConst(),
+                                          m_phaseMassDens.toNestedViewConst(),
+                                          m_dPhaseMassDens_dPres.toNestedViewConst(),
+                                          m_dPhaseMassDens_dComp.toNestedViewConst(),
+                                          m_phaseMob.toNestedViewConst(),
+                                          m_dPhaseMob_dPres.toNestedViewConst(),
+                                          m_dPhaseMob_dCompDens.toNestedViewConst(),
+                                          m_dCompFrac_dCompDens.toNestedViewConst(),
+                                          m_phaseCompFrac.toNestedViewConst(),
+                                          m_dPhaseCompFrac_dPres.toNestedViewConst(),
+                                          m_dPhaseCompFrac_dComp.toNestedViewConst(),
+                                          elemDofNumber.toNestedViewConst(),
+                                          dofManager.rankOffset(),
+                                          lengthTolerance,
+                                          dt,
+                                          localMatrix,
+                                          localRhs );
+    } );
   } );
 }
 

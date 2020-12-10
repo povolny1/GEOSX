@@ -20,7 +20,11 @@
 #define GEOSX_PHYSICSSOLVERS_FLUIDFLOW_COMPOSITIONALMULTIPHASEHYBRIDFVMASSEMBLERHELPERKERNELS_HPP
 
 #include "common/DataTypes.hpp"
-#include "finiteVolume/HybridFVMInnerProduct.hpp"
+#include "finiteVolume/mimeticInnerProducts/MimeticInnerProductBase.hpp"
+#include "finiteVolume/mimeticInnerProducts/TPFAInnerProduct.hpp"
+#include "finiteVolume/mimeticInnerProducts/QuasiTPFAInnerProduct.hpp"
+#include "finiteVolume/mimeticInnerProducts/QuasiRTInnerProduct.hpp"
+#include "finiteVolume/mimeticInnerProducts/SimpleInnerProduct.hpp"
 #include "linearAlgebra/interfaces/InterfaceTypes.hpp"
 #include "mesh/MeshLevel.hpp"
 #include "physicsSolvers/fluidFlow/CompositionalMultiphaseHybridFVMUpwindingHelperKernels.hpp"

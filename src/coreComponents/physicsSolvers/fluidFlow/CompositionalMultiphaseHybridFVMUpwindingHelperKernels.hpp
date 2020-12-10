@@ -22,7 +22,6 @@
 #include "common/DataTypes.hpp"
 #include "linearAlgebra/interfaces/InterfaceTypes.hpp"
 #include "mesh/MeshLevel.hpp"
-#include "finiteVolume/HybridFVMInnerProduct.hpp"
 
 namespace geosx
 {

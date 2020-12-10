@@ -20,9 +20,9 @@
 
 #include "common/TimingMacros.hpp"
 #include "constitutive/fluid/SingleFluidBase.hpp"
-#include "finiteVolume/FluxApproximationBase.hpp"
+#include "finiteVolume/HybridMimeticDiscretization.hpp"
+#include "finiteVolume/MimeticInnerProductDispatch.hpp"
 #include "mpiCommunications/CommunicationTools.hpp"
-
 
 /**
  * @namespace the geosx namespace that encapsulates the majority of the code
@@ -33,6 +33,7 @@ namespace geosx
 using namespace dataRepository;
 using namespace constitutive;
 using namespace SinglePhaseHybridFVMKernels;
+using namespace mimeticInnerProduct;
 
 SinglePhaseHybridFVM::SinglePhaseHybridFVM( const std::string & name,
                                             Group * const parent ):
@@ -200,6 +201,8 @@ void SinglePhaseHybridFVM::AssembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( t
   NumericalMethodsManager const & numericalMethodManager = domain.getNumericalMethodManager();
   FiniteVolumeManager const & fvManager = numericalMethodManager.getFiniteVolumeManager();
   FluxApproximationBase const & fluxApprox = fvManager.getFluxApproximation( m_discretizationName );
+  MimeticInnerProductBase const & mimeticInnerProductBase =
+    fluxApprox.getReference< MimeticInnerProductBase >( HybridMimeticDiscretization::viewKeyStruct::innerProductString );
 
   // node data (for transmissibility computation)
 
@@ -255,31 +258,37 @@ void SinglePhaseHybridFVM::AssembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( t
     SingleFluidBase const & fluid =
       GetConstitutiveModel< SingleFluidBase >( subRegion, m_fluidModelNames[targetIndex] );
 
-    KernelLaunchSelector< FluxKernel >( subRegion.numFacesPerElement(),
-                                        er,
-                                        esr,
-                                        subRegion,
-                                        fluid,
-                                        m_regionFilter.toViewConst(),
-                                        nodePosition,
-                                        elemRegionList,
-                                        elemSubRegionList,
-                                        elemList,
-                                        faceToNodes,
-                                        faceDofNumber,
-                                        faceGhostRank,
-                                        facePres,
-                                        dFacePres,
-                                        faceGravCoef,
-                                        transMultiplier,
-                                        m_mobility.toNestedViewConst(),
-                                        m_dMobility_dPres.toNestedViewConst(),
-                                        elemDofNumber.toNestedViewConst(),
-                                        dofManager.rankOffset(),
-                                        lengthTolerance,
-                                        dt,
-                                        localMatrix,
-                                        localRhs );
+    mimeticInnerProductDispatch( mimeticInnerProductBase,
+                                 [&] ( auto const mimeticInnerProduct )
+    {
+      using IP_TYPE = TYPEOFREF( mimeticInnerProduct );
+
+      KernelLaunchSelector< IP_TYPE, FluxKernel >( subRegion.numFacesPerElement(),
+                                                   er,
+                                                   esr,
+                                                   subRegion,
+                                                   fluid,
+                                                   m_regionFilter.toViewConst(),
+                                                   nodePosition,
+                                                   elemRegionList,
+                                                   elemSubRegionList,
+                                                   elemList,
+                                                   faceToNodes,
+                                                   faceDofNumber,
+                                                   faceGhostRank,
+                                                   facePres,
+                                                   dFacePres,
+                                                   faceGravCoef,
+                                                   transMultiplier,
+                                                   m_mobility.toNestedViewConst(),
+                                                   m_dMobility_dPres.toNestedViewConst(),
+                                                   elemDofNumber.toNestedViewConst(),
+                                                   dofManager.rankOffset(),
+                                                   lengthTolerance,
+                                                   dt,
+                                                   localMatrix,
+                                                   localRhs );
+    } );
   } );
 }
 
