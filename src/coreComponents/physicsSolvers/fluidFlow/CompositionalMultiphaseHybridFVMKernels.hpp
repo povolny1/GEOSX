@@ -350,7 +350,9 @@ struct FluxKernel
       stackArray2d< real64, NF *NF > transMatrix( NF, NF );
       stackArray2d< real64, NF *NF > transMatrixGrav( NF, NF );
 
-      real64 const perm[ 3 ] = { elemPerm[ei][0], elemPerm[ei][1], elemPerm[ei][2] };
+      real64 const perm[ 3 ] = { LvArray::math::max( elemPerm[ei][0], 1e-19 ),
+                                 LvArray::math::max( elemPerm[ei][1], 1e-19 ),
+                                 LvArray::math::max( elemPerm[ei][2], 1e-19 ) };
 
       // recompute the local transmissibility matrix at each iteration
       // we can decide later to precompute transMatrix if needed
