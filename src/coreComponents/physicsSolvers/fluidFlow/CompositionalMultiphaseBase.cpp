@@ -533,7 +533,7 @@ void CompositionalMultiphaseBase::InitializeFluidState( MeshLevel & mesh ) const
   {
 
     // ugly hack to match exactly Intersect's initial condition
-    ReadPressureAndCompositionsFromFile( subRegion );
+    //ReadPressureAndCompositionsFromFile( subRegion );
 
     // 1. Assume global component fractions have been prescribed.
     // Initialize constitutive state to get fluid density.

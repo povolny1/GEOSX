@@ -32,7 +32,8 @@ namespace CompositionalMultiphaseHybridFVMKernels
 template< localIndex NF, localIndex NC, localIndex NP >
 GEOSX_HOST_DEVICE
 void
-AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePres,
+AssemblerKernelHelper::ApplyGradient( bool plotCell,
+                                      arrayView1d< real64 const > const & facePres,
                                       arrayView1d< real64 const > const & dFacePres,
                                       arrayView1d< real64 const > const & faceGravCoef,
                                       arraySlice1d< localIndex const > const & elemToFaces,
@@ -47,6 +48,7 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
                                       arraySlice2d< real64 const > const & dElemPhaseMob_dCompDens,
                                       arraySlice2d< real64 const > const & dElemCompFrac_dCompDens,
                                       arraySlice2d< real64 const > const & transMatrix,
+                                      real64 const & dt,
                                       real64 (& oneSidedVolFlux)[ NF ],
                                       real64 (& dOneSidedVolFlux_dPres)[ NF ],
                                       real64 (& dOneSidedVolFlux_dFacePres)[ NF ][ NF ],
@@ -78,6 +80,17 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
       real64 const fGravCoef = faceGravCoef[elemToFaces[jfaceLoc]];
       real64 const gravCoefDif = ccGravCoef - fGravCoef;
 
+      if( plotCell )
+      {
+        std::cout << "ifaceLoc = " << ifaceLoc << " jfaceLoc = " << jfaceLoc
+                  << " presDif = " << elemPres + dElemPres - (facePres[elemToFaces[jfaceLoc]] + dFacePres[elemToFaces[jfaceLoc]])
+                  << " gravCoefDif = " << gravCoefDif
+                  << " transMatrix = " << transMatrix[ifaceLoc][jfaceLoc]
+                  << " elemPhaseMassDens[0] = " << elemPhaseMassDens[0]
+                  << " elemPhaseMassDens[1] = " << elemPhaseMassDens[1]
+                  << std::endl;
+      }
+
       for( localIndex ip = 0; ip < NP; ++ip )
       {
 
@@ -104,7 +117,7 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
         // no density evaluated at the face center
 
         // potential difference
-        real64 const phasePotDif = presDif - phaseGravDif;
+        real64 const phasePotDif = presDif - (elemPhaseMob[ip] > 1e-1) * phaseGravDif;
         real64 const phaseMobPotDif = elemPhaseMob[ip] * phasePotDif;
         real64 const dPhaseMobPotDif_dPres = dElemPhaseMob_dPres[ip] * phasePotDif
                                              + elemPhaseMob[ip] * (dPresDif_dPres - dPhaseGravDif_dPres);
@@ -117,15 +130,15 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
 
         // this is going to store T \sum_p \lambda_p (\nabla p - \rho_p g \nabla d)
         oneSidedVolFlux[ifaceLoc] = oneSidedVolFlux[ifaceLoc]
-                                    + transMatrix[ifaceLoc][jfaceLoc] * phaseMobPotDif;
+                                    + dt * transMatrix[ifaceLoc][jfaceLoc] * phaseMobPotDif;
         dOneSidedVolFlux_dPres[ifaceLoc] = dOneSidedVolFlux_dPres[ifaceLoc]
-                                           + transMatrix[ifaceLoc][jfaceLoc] * dPhaseMobPotDif_dPres;
+                                           + dt * transMatrix[ifaceLoc][jfaceLoc] * dPhaseMobPotDif_dPres;
         dOneSidedVolFlux_dFacePres[ifaceLoc][jfaceLoc] = dOneSidedVolFlux_dFacePres[ifaceLoc][jfaceLoc]
-                                                         + transMatrix[ifaceLoc][jfaceLoc] * dPhaseMobPotDif_dFacePres;
+                                                         + dt * transMatrix[ifaceLoc][jfaceLoc] * dPhaseMobPotDif_dFacePres;
         for( localIndex ic = 0; ic < NC; ++ic )
         {
           dOneSidedVolFlux_dCompDens[ifaceLoc][ic] = dOneSidedVolFlux_dCompDens[ifaceLoc][ic]
-                                                     + transMatrix[ifaceLoc][jfaceLoc] * dPhaseMobPotDif_dCompDens[ic];
+                                                     + dt * transMatrix[ifaceLoc][jfaceLoc] * dPhaseMobPotDif_dCompDens[ic];
         }
       }
     }
@@ -135,7 +148,8 @@ AssemblerKernelHelper::ApplyGradient( arrayView1d< real64 const > const & facePr
 template< localIndex NF, localIndex NC, localIndex NP >
 GEOSX_HOST_DEVICE
 void
-AssemblerKernelHelper::AssembleFluxDivergence( localIndex const (&localIds)[ 3 ],
+AssemblerKernelHelper::AssembleFluxDivergence( bool plotCell,
+                                               localIndex const (&localIds)[ 3 ],
                                                globalIndex const rankOffset,
                                                arrayView2d< localIndex const > const & elemRegionList,
                                                arrayView2d< localIndex const > const & elemSubRegionList,
@@ -260,6 +274,17 @@ AssemblerKernelHelper::AssembleFluxDivergence( localIndex const (&localIds)[ 3 ]
                                        dofColIndicesElemVars,
                                        dofColIndicesFaceVars );
 
+    if( plotCell )
+    {
+      std::cout << "ei = " << localIds[2] << " ifaceLoc = " << ifaceLoc
+                << " oneSidedVolFlux = " << oneSidedVolFlux[ifaceLoc]
+                << std::endl;
+      for( localIndex ic = 0; ic < NC; ++ic )
+      {
+        std::cout << "divMassFluxesVisc[" << ic << "] = " << divMassFluxes[ic] << std::endl;
+      }
+    }
+
     // 3) *************** Assemble buoyancy terms ******************
 
     real64 const transGravCoef = (localIds[0] != neighborIds[0] || localIds[1] != neighborIds[1] || localIds[2] != neighborIds[2])
@@ -291,7 +316,8 @@ AssemblerKernelHelper::AssembleFluxDivergence( localIndex const (&localIds)[ 3 ]
                                                           dUpwPhaseGravCoef_dCompDens );
 
     // 3.b) Add the buoyancy term of this face to the divergence of the flux in this cell
-    AssembleBuoyancyFlux< NF, NC, NP >( ifaceLoc,
+    AssembleBuoyancyFlux< NF, NC, NP >( plotCell,
+                                        ifaceLoc,
                                         phaseGravTerm,
                                         dPhaseGravTerm_dPres,
                                         dPhaseGravTerm_dCompDens,
@@ -301,6 +327,15 @@ AssemblerKernelHelper::AssembleFluxDivergence( localIndex const (&localIds)[ 3 ]
                                         dt,
                                         divMassFluxes,
                                         dDivMassFluxes_dElemVars );
+
+    if( plotCell )
+    {
+      std::cout << "ei = " << localIds[2] << " ifaceLoc = " << ifaceLoc << std::endl;
+      for( localIndex ic = 0; ic < NC; ++ic )
+      {
+        std::cout << "divMassFluxesGrav[" << ic << "] = " << divMassFluxes[ic] << std::endl;
+      }
+    }
 
   }
 
@@ -414,7 +449,8 @@ AssemblerKernelHelper::AssembleViscousFlux( localIndex const ifaceLoc,
 template< localIndex NF, localIndex NC, localIndex NP >
 GEOSX_HOST_DEVICE
 void
-AssemblerKernelHelper::AssembleBuoyancyFlux( localIndex const ifaceLoc,
+AssemblerKernelHelper::AssembleBuoyancyFlux( bool plot,
+                                             localIndex const ifaceLoc,
                                              real64 const (&phaseGravTerm)[ NP ][ NP-1 ],
                                              real64 const (&dPhaseGravTerm_dPres)[ NP ][ NP-1 ][ 2 ],
                                              real64 const (&dPhaseGravTerm_dCompDens)[ NP ][ NP-1 ][ 2 ][ NC ],
@@ -427,6 +463,7 @@ AssemblerKernelHelper::AssembleBuoyancyFlux( localIndex const ifaceLoc,
 {
   localIndex constexpr NDOF = NC+1;
   localIndex const elemVarsOffset = NDOF*(ifaceLoc+1);
+  GEOSX_UNUSED_VAR( plot );
 
   for( localIndex ip = 0; ip < NP; ++ip )
   {
@@ -598,7 +635,8 @@ AssemblerKernelHelper::FindNeighbor( localIndex const (&localIds)[3],
 #define INST_AssemblerKernelHelper( NF, NC, NP ) \
   template \
   void \
-  AssemblerKernelHelper::ApplyGradient< NF, NC, NP >( arrayView1d< real64 const > const & facePres, \
+  AssemblerKernelHelper::ApplyGradient< NF, NC, NP >( bool plotCell, \
+                                                      arrayView1d< real64 const > const & facePres, \
                                                       arrayView1d< real64 const > const & dFacePres, \
                                                       arrayView1d< real64 const > const & faceGravCoef, \
                                                       arraySlice1d< localIndex const > const & elemToFaces, \
@@ -613,13 +651,15 @@ AssemblerKernelHelper::FindNeighbor( localIndex const (&localIds)[3],
                                                       arraySlice2d< real64 const > const & dElemPhaseMob_dCompDens, \
                                                       arraySlice2d< real64 const > const & dElemCompFrac_dCompDens, \
                                                       arraySlice2d< real64 const > const & transMatrix, \
+                                                      real64 const & dt, \
                                                       real64 ( &oneSidedVolFlux )[ NF ], \
                                                       real64 ( &dOneSidedVolFlux_dPres )[ NF ], \
                                                       real64 ( &dOneSidedVolFlux_dFacePres )[ NF ][ NF ], \
                                                       real64 ( &dOneSidedVolFlux_dCompDens )[ NF ][ NC ] ); \
   template \
   void \
-  AssemblerKernelHelper::AssembleFluxDivergence< NF, NC, NP >( localIndex const (&localIds)[ 3 ], \
+  AssemblerKernelHelper::AssembleFluxDivergence< NF, NC, NP >( bool plotCell, \
+                                                               localIndex const (&localIds)[ 3 ], \
                                                                globalIndex const rankOffset, \
                                                                arrayView2d< localIndex const > const & elemRegionList, \
                                                                arrayView2d< localIndex const > const & elemSubRegionList, \
@@ -673,7 +713,8 @@ AssemblerKernelHelper::FindNeighbor( localIndex const (&localIds)[3],
                                                             globalIndex ( &dofColIndicesFaceVars )[ NF ] ); \
   template \
   void \
-  AssemblerKernelHelper::AssembleBuoyancyFlux< NF, NC, NP >( localIndex const ifaceLoc, \
+  AssemblerKernelHelper::AssembleBuoyancyFlux< NF, NC, NP >( bool plot, \
+                                                             localIndex const ifaceLoc, \
                                                              real64 const (&phaseGravTerm)[ NP ][ NP-1 ], \
                                                              real64 const (&dPhaseGravTerm_dPres)[ NP ][ NP-1 ][ 2 ], \
                                                              real64 const (&dPhaseGravTerm_dCompDens)[ NP ][ NP-1 ][ 2 ][ NC ], \

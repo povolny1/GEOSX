@@ -82,7 +82,8 @@ struct AssemblerKernelHelper
   template< localIndex NF, localIndex NC, localIndex NP >
   GEOSX_HOST_DEVICE
   static void
-    ApplyGradient( arrayView1d< real64 const > const & facePres,
+    ApplyGradient( bool plotCell,
+                   arrayView1d< real64 const > const & facePres,
                    arrayView1d< real64 const > const & dFacePres,
                    arrayView1d< real64 const > const & faceGravCoef,
                    arraySlice1d< localIndex const > const & elemToFaces,
@@ -97,6 +98,7 @@ struct AssemblerKernelHelper
                    arraySlice2d< real64 const > const & dElemPhaseMob_dCompDens,
                    arraySlice2d< real64 const > const & dElemCompFrac_dCompDens,
                    arraySlice2d< real64 const > const & transMatrix,
+                   real64 const & dt,
                    real64 ( &oneSidedVolFlux )[ NF ],
                    real64 ( &dOneSidedVolFlux_dPres )[ NF ],
                    real64 ( &dOneSidedVolFlux_dFacePres )[ NF ][ NF ],
@@ -134,7 +136,8 @@ struct AssemblerKernelHelper
   template< localIndex NF, localIndex NC, localIndex NP >
   GEOSX_HOST_DEVICE
   static void
-  AssembleFluxDivergence( localIndex const (&localIds)[ 3 ],
+  AssembleFluxDivergence( bool plotCell,
+                          localIndex const (&localIds)[ 3 ],
                           globalIndex const rankOffset,
                           arrayView2d< localIndex const > const & elemRegionList,
                           arrayView2d< localIndex const > const & elemSubRegionList,
@@ -227,7 +230,8 @@ struct AssemblerKernelHelper
   template< localIndex NF, localIndex NC, localIndex NP >
   GEOSX_HOST_DEVICE
   static void
-    AssembleBuoyancyFlux( localIndex const ifaceLoc,
+    AssembleBuoyancyFlux( bool plot,
+                          localIndex const ifaceLoc,
                           real64 const (&phaseGravTerm)[ NP ][ NP-1 ],
                           real64 const (&dPhaseGravTerm_dPres)[ NP ][ NP-1 ][ 2 ],
                           real64 const (&dPhaseGravTerm_dCompDens)[ NP ][ NP-1 ][ 2 ][ NC ],

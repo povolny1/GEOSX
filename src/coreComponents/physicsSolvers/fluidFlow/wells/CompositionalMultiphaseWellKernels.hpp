@@ -593,13 +593,15 @@ struct PressureRelationKernel
         stackArray1d< real64, maxNumComp > dAvgMassDens_dCompNext( NC );
 
         // compute the average density at the interface between well elements
-        real64 const avgMassDens = 0.5 * ( wellElemTotalMassDens[iwelemNext] + wellElemTotalMassDens[iwelem] );
-        real64 const dAvgMassDens_dPresNext = 0.5 * dWellElemTotalMassDens_dPres[iwelemNext];
-        real64 const dAvgMassDens_dPresCurrent = 0.5 * dWellElemTotalMassDens_dPres[iwelem];
+        real64 const avgMassDens = wellElemTotalMassDens[iwelem]; //0.5 * ( wellElemTotalMassDens[iwelemNext] +
+                                                                  // wellElemTotalMassDens[iwelem] );
+        real64 const dAvgMassDens_dPresNext = 0; //0.5 * dWellElemTotalMassDens_dPres[iwelemNext];
+        real64 const dAvgMassDens_dPresCurrent = dWellElemTotalMassDens_dPres[iwelem]; //0.5 * dWellElemTotalMassDens_dPres[iwelem];
         for( localIndex ic = 0; ic < NC; ++ic )
         {
-          dAvgMassDens_dCompNext[ic] = 0.5 * dWellElemTotalMassDens_dCompDens[iwelemNext][ic];
-          dAvgMassDens_dCompCurrent[ic] = 0.5 * dWellElemTotalMassDens_dCompDens[iwelem][ic];
+          dAvgMassDens_dCompNext[ic] = 0; //0.5 * dWellElemTotalMassDens_dCompDens[iwelemNext][ic];
+          dAvgMassDens_dCompCurrent[ic] = dWellElemTotalMassDens_dCompDens[iwelem][ic]; //0.5 *
+                                                                                        // dWellElemTotalMassDens_dCompDens[iwelem][ic];
         }
 
         // compute depth diff times acceleration

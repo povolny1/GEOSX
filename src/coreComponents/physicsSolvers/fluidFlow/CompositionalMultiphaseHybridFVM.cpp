@@ -233,8 +233,8 @@ void CompositionalMultiphaseHybridFVM::PrecomputeData( MeshLevel & mesh )
     minVal.min( transMultiplier[iface] );
   } );
 
-  GEOSX_ERROR_IF_LE_MSG( minVal.get(), 0.0,
-                         "The transmissibility multipliers used in SinglePhaseHybridFVM must strictly larger than 0.0" );
+  //GEOSX_ERROR_IF_LE_MSG( minVal.get(), 0.0,
+  //"The transmissibility multipliers used in SinglePhaseHybridFVM must strictly larger than 0.0" );
 
 
 }

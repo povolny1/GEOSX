@@ -108,24 +108,27 @@ void HybridMimeticDiscretization::registerCellStencil( Group & stencilGroup ) co
 
 void HybridMimeticDiscretization::computeCellStencil( MeshLevel & mesh ) const
 {
-  std::string const faultFileName = "fault.txt";
-  std::string line;
-  std::ifstream faultFile( faultFileName );
+  GEOSX_UNUSED_VAR( mesh );
+  // std::string const faultFileName = "fault.txt";
+  // std::string line;
+  // std::ifstream faultFile( faultFileName );
 
-  FaceManager & faceManager = *mesh.getFaceManager();
-  arrayView1d< real64 > const & transMultiplier =
-    faceManager.getReference< array1d< real64 > >( m_coeffName + FluxApproximationBase::viewKeyStruct::transMultiplierString );
+  // FaceManager & faceManager = *mesh.getFaceManager();
+  // arrayView1d< real64 > const & transMultiplier =
+  //   faceManager.getReference< array1d< real64 > >( m_coeffName + FluxApproximationBase::viewKeyStruct::transMultiplierString );
 
-  std::string const delimiter = " ";
-  if( faultFile.is_open() )
-  {
-    while( std::getline( faultFile, line ) )
-    {
-      localIndex const pierre_fault = std::stod( line );
-      transMultiplier[pierre_fault] = 1e-12;
-    }
-    faultFile.close();
-  }
+  // std::string const delimiter = " ";
+  // if( faultFile.is_open() )
+  // {
+  //   while( std::getline( faultFile, line ) )
+  //   {
+  //     localIndex const pierre_fault = std::stod( line );
+  //     GEOSX_UNUSED_VAR( pierre_fault );
+  //     GEOSX_UNUSED_VAR( transMultiplier );
+  //     //transMultiplier[pierre_fault] = 0;
+  //   }
+  //   faultFile.close();
+  // }
 }
 
 void HybridMimeticDiscretization::registerFractureStencil( Group & stencilGroup ) const

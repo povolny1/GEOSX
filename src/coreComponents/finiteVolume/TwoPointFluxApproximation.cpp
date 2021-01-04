@@ -83,25 +83,25 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
 
   ArrayOfArraysView< localIndex const > const faceToNodes = faceManager.nodeList().toViewConst();
 
-  array1d< real64 > pierre_s_trans( 130427 );
+  // array1d< real64 > pierre_s_trans( 130427 );
 
-  std::string const transFileName = "trans.txt";
-  std::string line;
-  std::ifstream transFile( transFileName );
+  // std::string const transFileName = "trans.txt";
+  // std::string line;
+  // std::ifstream transFile( transFileName );
 
-  localIndex counter = 0;
-  std::string const delimiter = " ";
-  if( transFile.is_open() )
-  {
-    while( std::getline( transFile, line ) )
-    {
-      real64 const pierre_trans = std::stod( line );
-      pierre_s_trans[counter] = pierre_trans;
-      counter++;
-    }
-    transFile.close();
-  }
-  counter = 0;
+  // localIndex counter = 0;
+  // std::string const delimiter = " ";
+  // if( transFile.is_open() )
+  // {
+  //   while( std::getline( transFile, line ) )
+  //   {
+  //     real64 const pierre_trans = std::stod( line );
+  //     pierre_s_trans[counter] = pierre_trans;
+  //     counter++;
+  //   }
+  //   transFile.close();
+  // }
+  // counter = 0;
 
   // make a list of region indices to be included
   SortedArray< localIndex > regionFilter;
@@ -116,7 +116,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
   real64 const areaTolerance = lengthTolerance * lengthTolerance;
   //real64 const weightTolerance = 1e-30 * lengthTolerance; // TODO: choice of constant based on physics?
 
-  forAll< serialPolicy >( faceManager.size(), [=, &stencil, &counter, &transMultiplier]( localIndex const kf )
+  forAll< serialPolicy >( faceManager.size(), [=, &stencil, /*&counter,*/ &transMultiplier]( localIndex const kf )
   {
     // Filter out boundary faces
     if( elemList[kf][0] < 0 || elemList[kf][1] < 0 || isZero( transMultiplier[kf] ) )
@@ -227,20 +227,21 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
 
     GEOSX_ASSERT( faceWeight > 0.0 );
     faceWeight = 1.0 / faceWeight;
+
     //altFaceWeight = 1.0 / altFaceWeight;
 
     //faceWeight = pierre_s_trans[counter];
 
-    if( isZero( pierre_s_trans[counter] ) )
-    {
-      transMultiplier[kf] = 1e-12;
-    }
-    else
-    {
-      transMultiplier[kf] = 1.0;
-    }
+    // if( isZero( pierre_s_trans[counter] ) )
+    // {
+    //   transMultiplier[kf] = 1e-12;
+    // }
+    // else
+    // {
+    //   transMultiplier[kf] = 1.0;
+    // }
 
-    counter++;
+    // counter++;
 
     for( localIndex ke = 0; ke < 2; ++ke )
     {

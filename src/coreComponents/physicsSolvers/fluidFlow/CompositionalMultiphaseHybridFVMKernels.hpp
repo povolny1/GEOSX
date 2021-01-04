@@ -87,7 +87,8 @@ struct AssemblerKernel
   template< localIndex NF, localIndex NC, localIndex NP >
   GEOSX_HOST_DEVICE
   static void
-  Compute( localIndex const er, localIndex const esr, localIndex const ei,
+  Compute( bool plotCell,
+           localIndex const er, localIndex const esr, localIndex const ei,
            SortedArrayView< localIndex const > const & regionFilter,
            arrayView2d< localIndex const > const & elemRegionList,
            arrayView2d< localIndex const > const & elemSubRegionList,
@@ -140,7 +141,8 @@ struct AssemblerKernel
 
     // for each one-sided face of the elem,
     // compute the volumetric flux using transMatrix
-    AssemblerKernelHelper::ApplyGradient< NF, NC, NP >( facePres,
+    AssemblerKernelHelper::ApplyGradient< NF, NC, NP >( plotCell,
+                                                        facePres,
                                                         dFacePres,
                                                         faceGravCoef,
                                                         elemToFaces,
@@ -155,6 +157,7 @@ struct AssemblerKernel
                                                         dPhaseMob_dCompDens[er][esr][ei],
                                                         dCompFrac_dCompDens[er][esr][ei],
                                                         transMatrix,
+                                                        dt,
                                                         oneSidedVolFlux,
                                                         dOneSidedVolFlux_dPres,
                                                         dOneSidedVolFlux_dFacePres,
@@ -173,7 +176,8 @@ struct AssemblerKernel
 
       // use the computed one sided vol fluxes and the upwinded mobilities
       // to assemble the upwinded mass fluxes in the mass conservation eqn of the elem
-      AssemblerKernelHelper::AssembleFluxDivergence< NF, NC, NP >( localIds,
+      AssemblerKernelHelper::AssembleFluxDivergence< NF, NC, NP >( plotCell,
+                                                                   localIds,
                                                                    rankOffset,
                                                                    elemRegionList,
                                                                    elemSubRegionList,
@@ -202,7 +206,7 @@ struct AssemblerKernel
                                                                    dOneSidedVolFlux_dPres,
                                                                    dOneSidedVolFlux_dFacePres,
                                                                    dOneSidedVolFlux_dCompDens,
-                                                                   dt,
+                                                                   1,
                                                                    localMatrix,
                                                                    localRhs );
     }
@@ -350,21 +354,68 @@ struct FluxKernel
       stackArray2d< real64, NF *NF > transMatrix( NF, NF );
       stackArray2d< real64, NF *NF > transMatrixGrav( NF, NF );
 
-      real64 const perm[ 3 ] = { LvArray::math::max( elemPerm[ei][0], 1e-19 ),
-                                 LvArray::math::max( elemPerm[ei][1], 1e-19 ),
-                                 LvArray::math::max( elemPerm[ei][2], 1e-19 ) };
+      real64 perm[ 3 ] = { LvArray::math::max( elemPerm[ei][0], 1e-19 ),
+                           LvArray::math::max( elemPerm[ei][1], 1e-19 ),
+                           LvArray::math::max( elemPerm[ei][2], 1e-19 ) };
 
-      // recompute the local transmissibility matrix at each iteration
-      // we can decide later to precompute transMatrix if needed
-      IP_TYPE::template Compute< NF >( nodePosition,
-                                       transMultiplier,
-                                       faceToNodes,
-                                       elemToFaces[ei],
-                                       elemCenter[ei],
-                                       elemVolume[ei],
-                                       perm,
-                                       lengthTolerance,
-                                       transMatrix );
+      bool useTPFA = false;
+      bool plotCell = false;
+      real64 const x_ref = 428116;
+      real64 const y_ref = -6319350;
+      real64 const z_ref = -5362;
+      real64 const dist = sqrt( (elemCenter[ei][0] - x_ref)*(elemCenter[ei][0] - x_ref)
+                                + (elemCenter[ei][1] - y_ref)*(elemCenter[ei][1] - y_ref)
+                                + (elemCenter[ei][2] - z_ref)*(elemCenter[ei][2] - z_ref) );
+
+      if( dist >= 130 && dist < 190 && elemCenter[ei][0] >= x_ref && elemCenter[ei][1] < -6319389 && elemCenter[ei][1] > -6319414 && elemCenter[ei][2] > -5500 )
+      {
+        //std::cout << "ei = " << ei << std::endl;
+        //std::cout << "center = " << elemCenter[ei][0] << " " << elemCenter[ei][1] << " " << elemCenter[ei][2] << std::endl;
+        //std::cout << "perm = " << perm[0] << " " << perm[1] << " " << perm[2] << std::endl;
+        useTPFA = true;
+        plotCell = true;
+        // for( localIndex ifaceLoc = 0; ifaceLoc < NF; ++ifaceLoc )
+        // {
+        //   for( localIndex inode = 0; inode < 3; ++inode )
+        //   {
+        //     std::cout << "node #" << inode << ": "
+        //        << nodePosition[faceToNodes[elemToFaces[ei][ifaceLoc]][inode]][0]
+        //               << " " << nodePosition[faceToNodes[elemToFaces[ei][ifaceLoc]][inode]][1]
+        //               << " " << nodePosition[faceToNodes[elemToFaces[ei][ifaceLoc]][inode]][2]
+        //        << std::endl;
+        //   }
+        // }
+      }
+
+      if( !useTPFA )
+      {
+        // recompute the local transmissibility matrix at each iteration
+        // we can decide later to precompute transMatrix if needed
+        IP_TYPE::template Compute< NF >( nodePosition,
+                                         transMultiplier,
+                                         faceToNodes,
+                                         elemToFaces[ei],
+                                         elemCenter[ei],
+                                         elemVolume[ei],
+                                         perm,
+                                         lengthTolerance,
+                                         transMatrix );
+
+      }
+      else
+      {
+        // recompute the local transmissibility matrix at each iteration
+        // we can decide later to precompute transMatrix if needed
+        mimeticInnerProduct::TPFAInnerProduct::Compute< NF >( nodePosition,
+                                                              transMultiplier,
+                                                              faceToNodes,
+                                                              elemToFaces[ei],
+                                                              elemCenter[ei],
+                                                              elemVolume[ei],
+                                                              perm,
+                                                              lengthTolerance,
+                                                              transMatrix );
+      }
 
       mimeticInnerProduct::TPFAInnerProduct::Compute< NF >( nodePosition,
                                                             transMultiplier,
@@ -378,7 +429,8 @@ struct FluxKernel
 
 
       // perform flux assembly in this element
-      CompositionalMultiphaseHybridFVMKernels::AssemblerKernel::Compute< NF, NC, NP >( er, esr, ei,
+      CompositionalMultiphaseHybridFVMKernels::AssemblerKernel::Compute< NF, NC, NP >( plotCell,
+                                                                                       er, esr, ei,
                                                                                        regionFilter,
                                                                                        elemRegionList,
                                                                                        elemSubRegionList,
