@@ -650,7 +650,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     mgr_bsize = numResLabels + numWellLabels;
     mgr_nlevels = 4;
-    HYPRE_Int mgr_pmax_elmts = 15;
+    HYPRE_Int mgr_pmax_elmts = 13;
 
     /* options for solvers at each level */
     HYPRE_Int mgr_gsmooth_type = 16; // ILU(0)
@@ -730,7 +730,7 @@ void HyprePreconditioner::createMGR( DofManager const * const dofManager )
 
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelFRelaxMethod( m_precond, mgr_level_frelax_method.data() ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( m_precond, 1 ));
-    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( m_precond, 1e-14 ));
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( m_precond, mgr_pmax_elmts ));
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( m_precond, mgr_level_interp_type.data() ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( m_precond, mgr_coarse_grid_method.data() ) );

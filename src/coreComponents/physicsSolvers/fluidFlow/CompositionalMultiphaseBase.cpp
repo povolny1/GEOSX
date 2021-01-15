@@ -1150,8 +1150,13 @@ void CompositionalMultiphaseBase::ImplicitStepComplete( real64 const & GEOSX_UNU
 
   MeshLevel & mesh = *domain.getMeshBody( 0 )->getMeshLevel( 0 );
 
+  RAJA::ReduceSum< parallelDeviceReduce, real64 > local_fpr_num;
+  RAJA::ReduceSum< parallelDeviceReduce, real64 > local_fpr_denom;
+  
   forTargetSubRegions( mesh, [&]( localIndex const, ElementSubRegionBase & subRegion )
   {
+    arrayView1d< real64 const > const & volume = subRegion.getElementVolume();
+    
     arrayView1d< real64 const > const dPres =
       subRegion.getReference< array1d< real64 > >( viewKeyStruct::deltaPressureString );
     arrayView2d< real64 const > const dCompDens =
@@ -1162,6 +1167,9 @@ void CompositionalMultiphaseBase::ImplicitStepComplete( real64 const & GEOSX_UNU
     arrayView2d< real64 > const compDens =
       subRegion.getReference< array2d< real64 > >( viewKeyStruct::globalCompDensityString );
 
+    arrayView2d< real64 > const phaseVolFrac =
+      subRegion.getReference< array2d< real64 > >( viewKeyStruct::phaseVolumeFractionString );
+    
     forAll< parallelDevicePolicy<> >( subRegion.size(), [=] GEOSX_HOST_DEVICE ( localIndex const ei )
     {
       pres[ei] += dPres[ei];
@@ -1169,8 +1177,18 @@ void CompositionalMultiphaseBase::ImplicitStepComplete( real64 const & GEOSX_UNU
       {
         compDens[ei][ic] += dCompDens[ei][ic];
       }
+      local_fpr_num += volume[ei] * phaseVolFrac[ei][0] * pres[ei];
+      local_fpr_denom += volume[ei] * phaseVolFrac[ei][0]; 
     } );
   } );
+  real64 const global_fpr_num = MpiWrapper::Sum( local_fpr_num.get() );
+  real64 const global_fpr_denom = MpiWrapper::Sum( local_fpr_denom.get() );
+  int const thisRank = MpiWrapper::Comm_rank( MPI_COMM_GEOSX );
+
+  if( thisRank == 0 )
+  {    
+    std::cout << "$$$$$$$$$ " << global_fpr_num / global_fpr_denom << std::endl;
+  }
 }
 
 void CompositionalMultiphaseBase::ResetViews( MeshLevel & mesh )

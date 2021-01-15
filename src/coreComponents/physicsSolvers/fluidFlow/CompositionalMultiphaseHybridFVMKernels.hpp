@@ -372,8 +372,8 @@ struct FluxKernel
         //std::cout << "ei = " << ei << std::endl;
         //std::cout << "center = " << elemCenter[ei][0] << " " << elemCenter[ei][1] << " " << elemCenter[ei][2] << std::endl;
         //std::cout << "perm = " << perm[0] << " " << perm[1] << " " << perm[2] << std::endl;
-        useTPFA = true;
-        plotCell = true;
+        //useTPFA = true;
+        //plotCell = true;
         // for( localIndex ifaceLoc = 0; ifaceLoc < NF; ++ifaceLoc )
         // {
         //   for( localIndex inode = 0; inode < 3; ++inode )
