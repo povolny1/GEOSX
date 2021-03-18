@@ -14,6 +14,15 @@ set( linearAlgebra_headers
      interfaces/VectorBase.hpp
      interfaces/dense/BlasLapackFunctions.h
      interfaces/dense/BlasLapackLA.hpp
+     multiscale/MetisPartitioner.hpp
+     multiscale/MsrsbLevelBuilder.hpp
+     multiscale/MeshData.hpp
+     multiscale/MeshLevel.hpp
+     multiscale/MeshObjectManager.hpp
+     multiscale/MeshUtils.hpp
+     multiscale/LevelBuilderBase.hpp
+     multiscale/PartitionerBase.hpp
+     multiscale/PreconditionerMultiscale.hpp
      solvers/BicgstabSolver.hpp
      solvers/BlockPreconditioner.hpp
      solvers/CgSolver.hpp
@@ -38,7 +47,7 @@ set( linearAlgebra_headers
      utilities/LinearSolverResult.hpp
      utilities/NormalOperator.hpp
      utilities/TransposeOperator.hpp
-   ) 
+   )
 
 #
 # Specify all sources
@@ -46,13 +55,21 @@ set( linearAlgebra_headers
 set( linearAlgebra_sources
      DofManager.cpp
      interfaces/dense/BlasLapackLA.cpp
+     multiscale/MetisPartitioner.cpp
+     multiscale/MsrsbLevelBuilder.cpp
+     multiscale/MeshLevel.cpp
+     multiscale/MeshObjectManager.cpp
+     multiscale/MeshUtils.cpp
+     multiscale/LevelBuilderBase.cpp
+     multiscale/PartitionerBase.cpp
+     multiscale/PreconditionerMultiscale.cpp
      solvers/BicgstabSolver.cpp
      solvers/BlockPreconditioner.cpp
      solvers/CgSolver.cpp
      solvers/GmresSolver.cpp
      solvers/KrylovSolver.cpp
      solvers/SeparateComponentPreconditioner.cpp
-   ) 
+   )
 
 set( dependencyList mesh blas lapack )
 
@@ -95,6 +112,7 @@ if( ENABLE_HYPRE )
     list( APPEND linearAlgebra_headers
           interfaces/hypre/HypreExport.hpp
           interfaces/hypre/HypreInterface.hpp
+          interfaces/hypre/HypreKernels.hpp
           interfaces/hypre/HypreMGR.hpp
           interfaces/hypre/HypreMatrix.hpp
           interfaces/hypre/HyprePreconditioner.hpp
@@ -111,7 +129,7 @@ if( ENABLE_HYPRE )
           interfaces/hypre/mgrStrategies/MultiphasePoromechanics.hpp
           interfaces/hypre/mgrStrategies/SinglePhaseHybridFVM.hpp
           interfaces/hypre/mgrStrategies/SinglePhasePoromechanics.hpp
-          interfaces/hypre/mgrStrategies/SinglePhaseReservoirFVM.hpp	  
+          interfaces/hypre/mgrStrategies/SinglePhaseReservoirFVM.hpp
           interfaces/hypre/mgrStrategies/SinglePhaseReservoirHybridFVM.hpp
         )
 
@@ -122,6 +140,7 @@ if( ENABLE_HYPRE )
           interfaces/hypre/HypreMatrix.cpp
           interfaces/hypre/HyprePreconditioner.cpp
           interfaces/hypre/HypreSolver.cpp
+          interfaces/hypre/HypreUtils.cpp
           interfaces/hypre/HypreVector.cpp
         )
 
@@ -156,6 +175,11 @@ endif()
 
 if ( ENABLE_CUDA )
     list( APPEND dependencyList cuda )
+endif()
+
+# We depend on METIS for multiscale coarsening
+if( ENABLE_METIS )
+    list( APPEND dependencyList metis )
 endif()
 
 blt_add_library( NAME       linearAlgebra

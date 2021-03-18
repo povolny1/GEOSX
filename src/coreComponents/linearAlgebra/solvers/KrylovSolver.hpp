@@ -206,7 +206,7 @@ protected:
     m_residualNorms[iter] = rnorm;
     if( m_params.logLevel >= 2 )
     {
-      GEOSX_LOG_RANK_0( methodName() << " iteration " << iter << ": residual = " << rnorm );
+      GEOSX_LOG_RANK_0( methodName() << " iteration " << iter << ": residual = " << std::scientific << rnorm / m_residualNorms[0] );
     }
   }
 

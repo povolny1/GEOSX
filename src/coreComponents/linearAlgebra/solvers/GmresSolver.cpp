@@ -92,14 +92,14 @@ void GmresSolver< VECTOR >::solve( Vector const & b,
                                    Vector & x ) const
 {
   // We create Krylov subspace vectors once using the size and partitioning of b.
-  // It is assumed that on every repeated call to solve() input vectors will keep
-  // the same (or at least compatible) size and partitioning.
+  // On repeated calls to solve() input vectors must have the same size and partitioning.
   if( !m_kspaceInitialized )
   {
-    for( localIndex i = 0; i < m_params.krylov.maxRestart + 1; ++i )
+    for( VectorTemp & kv : m_kspace )
     {
-      m_kspace[i] = createTempVector( b );
+      kv = createTempVector( b );
     }
+    m_kspaceInitialized = true;
   }
 
   Stopwatch watch( m_result.solveTime );
@@ -134,7 +134,7 @@ void GmresSolver< VECTOR >::solve( Vector const & b,
     // Re-initialize Krylov subspace
     g.zero();
     g[0] = r.norm2();
-    m_kspace[0].axpby( 1.0 / g[0], r, 0.0 );
+    m_kspace[0].axpby( g[0] > 0.0 ? 1.0 / g[0] : 1.0, r, 0.0 );
 
     localIndex j;
     for( j = 0; j < m_params.krylov.maxRestart && k <= m_params.krylov.maxIterations; ++j, ++k )
@@ -162,7 +162,7 @@ void GmresSolver< VECTOR >::solve( Vector const & b,
       }
 
       H( j+1, j ) = w.norm2();
-      GEOSX_KRYLOV_BREAKDOWN_IF_ZERO( H( j + 1, j ) )
+      GEOSX_KRYLOV_BREAKDOWN_IF_ZERO( H( j+1, j ) )
       m_kspace[j+1].axpby( 1.0 / H( j+1, j ), w, 0.0 );
 
       // Apply all previous rotations to the new column

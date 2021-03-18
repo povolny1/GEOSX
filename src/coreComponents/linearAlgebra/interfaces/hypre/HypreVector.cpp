@@ -21,9 +21,8 @@
 #include "codingUtilities/Utilities.hpp"
 #include "linearAlgebra/interfaces/hypre/HypreUtils.hpp"
 
-#include "HYPRE.h"
-#include "_hypre_IJ_mv.h"
-#include "_hypre_parcsr_mv.h"
+#include <HYPRE.h>
+#include <_hypre_IJ_mv.h>
 
 #include <iomanip>
 
@@ -378,7 +377,7 @@ real64 HypreVector::norm1() const
   RAJA::ReduceSum< ReducePolicy< hypre::execPolicy >, real64 > localNorm( 0.0 );
   forAll< hypre::execPolicy >( localSize(), [=] GEOSX_HYPRE_HOST_DEVICE ( localIndex const i )
   {
-    localNorm += fabs( values[i] );
+    localNorm += LvArray::math::abs( values[i] );
   } );
   return MpiWrapper::sum( localNorm.get(), getComm() );
 }
@@ -397,7 +396,7 @@ real64 HypreVector::normInf() const
   RAJA::ReduceMax< ReducePolicy< hypre::execPolicy >, real64 > localNorm( 0.0 );
   forAll< hypre::execPolicy >( localSize(), [=] GEOSX_HYPRE_HOST_DEVICE ( localIndex const i )
   {
-    localNorm.max( fabs( values[i] ) );
+    localNorm.max( LvArray::math::abs( values[i] ) );
   } );
   return MpiWrapper::max( localNorm.get(), getComm() );
 }

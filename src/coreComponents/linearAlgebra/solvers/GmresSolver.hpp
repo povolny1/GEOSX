@@ -103,7 +103,7 @@ protected:
   array1d< VectorTemp > m_kspace;
 
   /// Flag indicating whether kspace vectors have been created
-  bool m_kspaceInitialized;
+  bool mutable m_kspaceInitialized;
 };
 
 } // namespace geosx

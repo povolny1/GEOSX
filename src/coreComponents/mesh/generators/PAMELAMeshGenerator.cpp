@@ -38,6 +38,8 @@ using namespace dataRepository;
 PAMELAMeshGenerator::PAMELAMeshGenerator( string const & name, Group * const parent ):
   MeshGeneratorBase( name, parent )
 {
+  enableLogLevelInput();
+
   registerWrapper( viewKeyStruct::filePathString(), &m_filePath ).
     setInputFlag( InputFlags::REQUIRED ).
     setRestartFlags( RestartFlags::NO_WRITE ).
@@ -50,17 +52,19 @@ PAMELAMeshGenerator::PAMELAMeshGenerator( string const & name, Group * const par
     setDescription( "Name of the fields within GEOSX" );
   registerWrapper( viewKeyStruct::scaleString(), &m_scale ).
     setInputFlag( InputFlags::OPTIONAL ).
-    setDefaultValue( 1. ).setDescription( "Scale the coordinates of the vertices" );
-  registerWrapper( viewKeyStruct::reverseZString(), &m_isZReverse ).
+    setDefaultValue( { 1.0, 1.0, 1.0 } ).
+    setDescription( "Scale the coordinates of the vertices by given scale factors" );
+  registerWrapper( viewKeyStruct::translateString(), &m_translate ).
     setInputFlag( InputFlags::OPTIONAL ).
-    setDefaultValue( 0 ).setDescription( "0 : Z coordinate is upward, 1 : Z coordinate is downward" );
+    setDefaultValue( { 0.0, 0.0, 0.0 } ).
+    setDescription( "Translate the coordinates of the vertices by a given vector" );
 }
 
 void PAMELAMeshGenerator::postProcessInput()
 {
   GEOSX_THROW_IF_NE_MSG( m_fieldsToImport.size(), m_fieldNamesInGEOSX.size(),
                          "Mismatch between number of values in " << viewKeyStruct::fieldsToImportString() <<
-                         " and " << viewKeyStruct::fieldNamesInGEOSXString() << " attrabutes",
+                         " and " << viewKeyStruct::fieldNamesInGEOSXString() << " attributes",
                          InputError );
 }
 
@@ -72,15 +76,9 @@ Group * PAMELAMeshGenerator::createChild( string const & childKey, string const 
 namespace
 {
 
-string const & getNameSeparator()
-{
-  static string const separator( "_" );
-  return separator;
-}
-
 string makeRegionLabel( string const & regionName, string const & regionCellType )
 {
-  return regionName + getNameSeparator() + regionCellType;
+  return regionName + "_" + regionCellType;
 }
 
 /*!
@@ -91,17 +89,15 @@ string makeRegionLabel( string const & regionName, string const & regionCellType
  */
 string retrieveSurfaceOrRegionName( string const & pamelaLabel )
 {
-  string_array const splitLabel = stringutilities::tokenize( pamelaLabel, getNameSeparator() );
-
   // The PAMELA label looks like: PART00002_POLYGON_POLYGON_GROUP_Ovbd1_Ovbd2_14
-  // But we only want to keep Ovbd1_Ovbd2
-  // So we find the word GROUP, and then we keep what is after, except the last piece
-
+  // (Ovbd1_Ovbd2 may or may not be present), we keep just the part following GROUP
+  // This can be done without splitting, but we want to keep flexibility to change.
+  string_array const splitLabel = stringutilities::tokenize( pamelaLabel, "_" );
   auto const it = std::find( std::begin( splitLabel ), std::end( splitLabel ), "GROUP" );
   GEOSX_THROW_IF( it == std::end( splitLabel ),
                   "GEOSX assumes that PAMELA places the word GROUP before the region/surface name",
                   InputError );
-  return stringutilities::join( std::next( it ), std::prev( std::end( splitLabel ) ), getNameSeparator() );
+  return stringutilities::join( std::next( it ), std::end( splitLabel ), "_" );
 }
 
 string const & getElementLabel( PAMELA::ELEMENTS::TYPE const type )
@@ -177,7 +173,8 @@ std::vector< int > getPamelaNodeOrder( PAMELA::ELEMENTS::TYPE const type )
 
 /// @return mesh length scale
 real64 importNodes( PAMELA::Mesh & srcMesh, // PAMELA is not const-correct,
-                    real64 const scaleFactor[3],
+                    R1Tensor const & scale,
+                    R1Tensor const & translate,
                     NodeManager & nodeManager )
 {
   nodeManager.resize( LvArray::integerConversion< localIndex >( srcMesh.get_PointCollection()->size_all() ) );
@@ -196,9 +193,9 @@ real64 importNodes( PAMELA::Mesh & srcMesh, // PAMELA is not const-correct,
   {
     localIndex const vertexLocalIndex = verticesIterator->get_localIndex();
     globalIndex const vertexGlobalIndex = verticesIterator->get_globalIndex();
-    X( vertexLocalIndex, 0 ) = verticesIterator->get_coordinates().x * scaleFactor[0];
-    X( vertexLocalIndex, 1 ) = verticesIterator->get_coordinates().y * scaleFactor[1];
-    X( vertexLocalIndex, 2 ) = verticesIterator->get_coordinates().z * scaleFactor[2];
+    X( vertexLocalIndex, 0 ) = ( verticesIterator->get_coordinates().x + translate[0] ) * scale[0];
+    X( vertexLocalIndex, 1 ) = ( verticesIterator->get_coordinates().y + translate[1] ) * scale[1];
+    X( vertexLocalIndex, 2 ) = ( verticesIterator->get_coordinates().z + translate[2] ) * scale[2];
     allNodes.insert( vertexLocalIndex );
     nodeLocalToGlobal[vertexLocalIndex] = vertexGlobalIndex;
     for( int i = 0; i < 3; ++i )
@@ -251,10 +248,10 @@ void importCellBlock( PAMELA::SubPart< PAMELA::Polyhedron * > * const cellBlockP
 }
 
 void importSurface( PAMELA::Part< PAMELA::Polygon * > * const surfacePtr,
+                    string const & surfaceName,
                     NodeManager & nodeManager )
 {
   GEOSX_ASSERT( surfacePtr != nullptr );
-  string const surfaceName = retrieveSurfaceOrRegionName( surfacePtr->Label );
   SortedArray< localIndex > & curNodeSet = nodeManager.sets().registerWrapper< SortedArray< localIndex > >( surfaceName ).reference();
 
   for( auto const & subPart : surfacePtr->SubParts )
@@ -302,8 +299,7 @@ void PAMELAMeshGenerator::generateMesh( DomainPartition & domain )
   NodeManager & nodeManager = meshLevel0.getNodeManager();
   CellBlockManager & cellBlockManager = domain.getGroup< CellBlockManager >( keys::cellManager );
 
-  real64 const scaleFactor[3] = { m_scale, m_scale, m_scale * ( m_isZReverse ? -1 : 1 ) };
-  real64 const lengthScale = importNodes( *m_pamelaMesh, scaleFactor, nodeManager );
+  real64 const lengthScale = importNodes( *m_pamelaMesh, m_scale, m_translate, nodeManager );
   meshBody.setGlobalLengthScale( lengthScale );
 
   // Use the PartMap of PAMELA to get the mesh
@@ -321,11 +317,12 @@ void PAMELAMeshGenerator::generateMesh( DomainPartition & domain )
     {
       // Ignore non-polyhedrons elements (somehow they exist within a polyhedron Part in PAMELA data model).
       auto const elementFamily = PAMELA::ELEMENTS::TypeToFamily.at( static_cast< int >( subPart.second->ElementType ) );
-      if( elementFamily == PAMELA::ELEMENTS::FAMILY::POLYHEDRON )
+      if( elementFamily == PAMELA::ELEMENTS::FAMILY::POLYHEDRON && subPart.second->SubCollection.size_owned() > 0 )
       {
-        string cellBlockName = makeRegionLabel( regionName, getElementLabel( subPart.second->ElementType ) );
+        string const cellBlockName = makeRegionLabel( regionName, getElementLabel( subPart.second->ElementType ) );
+        GEOSX_LOG_LEVEL_RANK_0( 1, "Importing cell block " << cellBlockName );
         importCellBlock( subPart.second, cellBlockName, cellBlockManager );
-        m_cellBlockRegions.emplace( std::move( cellBlockName ), polyhedronPart.first );
+        m_cellBlockRegions.emplace( cellBlockName, polyhedronPart.first );
       }
     }
   }
@@ -335,7 +332,9 @@ void PAMELAMeshGenerator::generateMesh( DomainPartition & domain )
   for( auto const & polygonPart : polygonPartMap )
   {
     PAMELA::Part< PAMELA::Polygon * > * const surfacePtr = polygonPart.second;
-    importSurface( surfacePtr, nodeManager );
+    string const surfaceName = retrieveSurfaceOrRegionName( surfacePtr->Label );
+    GEOSX_LOG_LEVEL_RANK_0( 1, "Importing surface " << surfaceName );
+    importSurface( surfacePtr, surfaceName, nodeManager );
   }
 
 }
@@ -486,6 +485,8 @@ void PAMELAMeshGenerator::importFields( DomainPartition & domain ) const
                       catalogName() << " " << getName() << ": target field not found: " << wrapperName,
                       InputError );
       WrapperBase & wrapper = subRegion.getWrapperBase( wrapperName );
+
+      GEOSX_LOG_LEVEL_RANK_0( 1, "Importing field " << meshProperty->Label );
 
       // Decide if field is constitutive or not
       if( materialWrapperNames.count( wrapperName ) > 0 && wrapper.numArrayDims() > 1 )

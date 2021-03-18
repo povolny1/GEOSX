@@ -763,11 +763,11 @@ void InternalMeshGenerator::generateMesh( DomainPartition & domain )
 
   {
     localIndex localNodeIndex = 0;
-    for( int i = 0; i < numNodesInDir[0]; ++i )
+    for( int k = 0; k < numNodesInDir[2]; ++k )
     {
       for( int j = 0; j < numNodesInDir[1]; ++j )
       {
-        for( int k = 0; k < numNodesInDir[2]; ++k )
+        for( int i = 0; i < numNodesInDir[0]; ++i )
         {
           int globalIJK[3] = { i, j, k };
 
@@ -861,20 +861,20 @@ void InternalMeshGenerator::generateMesh( DomainPartition & domain )
             lastElemIndexForBlockInPartition[1][jblock] - firstElemIndexForBlockInPartition[1][jblock] + 1,
             lastElemIndexForBlockInPartition[2][kblock] - firstElemIndexForBlockInPartition[2][kblock] + 1 };
 
-          for( int i = 0; i < numElemsInDirForBlock[0]; ++i )
+          for( int k = 0; k < numElemsInDirForBlock[2]; ++k )
           {
             for( int j = 0; j < numElemsInDirForBlock[1]; ++j )
             {
-              for( int k = 0; k < numElemsInDirForBlock[2]; ++k )
+              for( int i = 0; i < numElemsInDirForBlock[0]; ++i )
               {
                 int globalIJK[3] =
                 { i + firstElemIndexForBlockInPartition[0][iblock],
                   j + firstElemIndexForBlockInPartition[1][jblock],
                   k + firstElemIndexForBlockInPartition[2][kblock] };
 
-                const localIndex firstNodeIndex = numNodesInDir[1] * numNodesInDir[2] * ( globalIJK[0] - firstElemIndexInPartition[0] )
-                                                  + numNodesInDir[2] * ( globalIJK[1] - firstElemIndexInPartition[1] )
-                                                  + ( globalIJK[2] - firstElemIndexInPartition[2] );
+                const localIndex firstNodeIndex = ( globalIJK[0] - firstElemIndexInPartition[0] )
+                                                  + numNodesInDir[0] * ( globalIJK[1] - firstElemIndexInPartition[1] )
+                                                  + numNodesInDir[0] * numNodesInDir[1] * ( globalIJK[2] - firstElemIndexInPartition[2] );
                 localIndex nodeOfBox[8];
 
                 if( elementType == ElementType::Quadrilateral || elementType == ElementType::Triangle )
@@ -886,15 +886,17 @@ void InternalMeshGenerator::generateMesh( DomainPartition & domain )
                 }
                 else
                 {
-                  nodeOfBox[0] = firstNodeIndex;
-                  nodeOfBox[1] = numNodesInDir[1] * numNodesInDir[2] + firstNodeIndex;
-                  nodeOfBox[2] = numNodesInDir[1] * numNodesInDir[2] + numNodesInDir[2] + firstNodeIndex;
-                  nodeOfBox[3] = numNodesInDir[2] + firstNodeIndex;
+                  localIndex const stride[3] = { 1, numNodesInDir[0], numNodesInDir[0] * numNodesInDir[1] };
 
-                  nodeOfBox[4] = firstNodeIndex + 1;
-                  nodeOfBox[5] = numNodesInDir[1] * numNodesInDir[2] + firstNodeIndex + 1;
-                  nodeOfBox[6] = numNodesInDir[1] * numNodesInDir[2] + numNodesInDir[2] + firstNodeIndex + 1;
-                  nodeOfBox[7] = numNodesInDir[2] + firstNodeIndex + 1;
+                  nodeOfBox[0] = firstNodeIndex;
+                  nodeOfBox[1] = nodeOfBox[0] + stride[0];
+                  nodeOfBox[2] = nodeOfBox[1] + stride[1];
+                  nodeOfBox[3] = nodeOfBox[0] + stride[1];
+
+                  nodeOfBox[4] = nodeOfBox[0] + stride[2];
+                  nodeOfBox[5] = nodeOfBox[1] + stride[2];
+                  nodeOfBox[6] = nodeOfBox[2] + stride[2];
+                  nodeOfBox[7] = nodeOfBox[3] + stride[2];
 
                   //               7___________________ 6
                   //               /                   /|

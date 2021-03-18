@@ -239,6 +239,9 @@ public:
   virtual void leftRightScale( EpetraVector const & vecLeft,
                                EpetraVector const & vecRight ) override;
 
+  virtual void rescaleRows( arrayView1d< globalIndex const > const & rowIndices,
+                            RowSumType const rowSumType ) override;
+
   virtual void transpose( EpetraMatrix & dst ) const override;
 
   virtual real64 clearRow( globalIndex const row,
@@ -246,27 +249,33 @@ public:
                            real64 const diagValue = 0.0 ) override;
 
   virtual void addEntries( EpetraMatrix const & src,
-                           real64 const scale = 1.0,
-                           bool const samePattern = true ) override;
+                           MatrixPatternOp const op,
+                           real64 const scale ) override;
 
-  virtual void addDiagonal( EpetraVector const & src ) override;
+  virtual void addDiagonal( EpetraVector const & src,
+                            real64 const scale = 1.0 ) override;
+
+  virtual void clampEntries( real64 const lo,
+                             real64 const hi,
+                             bool const excludeDiag = false ) override;
 
   /**
    * @copydoc MatrixBase<EpetraMatrix,EpetraVector>::maxRowLength
    */
   virtual localIndex maxRowLength() const override;
 
-  virtual localIndex localRowLength( localIndex localRowIndex ) const override;
+  virtual localIndex rowLength( globalIndex const globalRowIndex ) const override;
 
-  virtual localIndex globalRowLength( globalIndex globalRowIndex ) const override;
+  virtual void getRowLengths( arrayView1d< localIndex > const & lengths ) const override;
 
   virtual void getRowCopy( globalIndex globalRow,
                            arraySlice1d< globalIndex > const & colIndices,
                            arraySlice1d< real64 > const & values ) const override;
 
-  virtual real64 getDiagValue( globalIndex globalRow ) const override;
-
   virtual void extractDiagonal( EpetraVector & dst ) const override;
+
+  virtual void getRowSums( EpetraVector & dst,
+                           RowSumType const rowSumType ) const override;
 
   /**
    * @copydoc MatrixBase<EpetraMatrix,EpetraVector>::numGlobalRows
@@ -332,6 +341,13 @@ public:
    * @copydoc MatrixBase<EpetraMatrix,EpetraVector>::normFrobenius
    */
   virtual real64 normFrobenius() const override;
+
+  /**
+   * @copydoc MatrixBase<EpetraMatrix,EpetraVector>::normMax
+   */
+  virtual real64 normMax() const override;
+
+  virtual real64 normMax( arrayView1d< globalIndex const > const & rowIndices ) const override;
 
   virtual localIndex getLocalRowID( globalIndex const index ) const override;
 

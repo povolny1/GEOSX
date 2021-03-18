@@ -226,7 +226,7 @@ void SolverBase::setNextDtBasedOnNewtonIter( real64 const & currentDt,
 
 real64 SolverBase::linearImplicitStep( real64 const & time_n,
                                        real64 const & dt,
-                                       integer const GEOSX_UNUSED_PARAM( cycleNumber ),
+                                       integer const cycleNumber,
                                        DomainPartition & domain )
 {
   // call setup for physics solver. Pre step allocations etc.
@@ -258,19 +258,13 @@ real64 SolverBase::linearImplicitStep( real64 const & time_n,
     m_assemblyCallback( m_localMatrix, m_localRhs );
   }
 
-  // TODO: Trilinos currently requires this, re-evaluate after moving to Tpetra-based solvers
-  if( m_precond )
-  {
-    m_precond->clear();
-  }
-
   // Compose parallel LA matrix/rhs out of local LA matrix/rhs
   m_matrix.create( m_localMatrix.toViewConst(), MPI_COMM_GEOSX );
   m_rhs.create( m_localRhs.toViewConst(), MPI_COMM_GEOSX );
   m_solution.createWithLocalSize( m_matrix.numLocalCols(), MPI_COMM_GEOSX );
 
   // Output the linear system matrix/rhs for debugging purposes
-  debugOutputSystem( 0.0, 0, 0, m_matrix, m_rhs );
+  debugOutputSystem( time_n, cycleNumber, 0, m_matrix, m_rhs );
 
   // Solve the linear system
   solveSystem( m_dofManager, m_matrix, m_rhs, m_solution );
@@ -522,7 +516,6 @@ real64 SolverBase::nonlinearImplicitStep( real64 const & time_n,
         }
       }
 
-
       // if the residual norm is less than the Newton tolerance we denote that we have
       // converged and break from the Newton loop immediately.
 
@@ -568,12 +561,6 @@ real64 SolverBase::nonlinearImplicitStep( real64 const & time_n,
       if( krylovParams.useAdaptiveTol )
       {
         krylovParams.relTolerance = eisenstatWalker( residualNorm, lastResidual, krylovParams.weakestTol );
-      }
-
-      // TODO: Trilinos currently requires this, re-evaluate after moving to Tpetra-based solvers
-      if( m_precond )
-      {
-        m_precond->clear();
       }
 
       // Compose parallel LA matrix/rhs out of local LA matrix/rhs
