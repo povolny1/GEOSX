@@ -431,14 +431,14 @@ void target_pml_3d(llint nx, llint ny,llint nz,
   RAJA::View< float, RAJA::Layout<1, RAJA::Index_type, 0> > phiView( phi, nx*ny*nz );
   RAJA::View< const float, RAJA::Layout<1, RAJA::Index_type, 0> > etaView( eta, (nx+2)*(ny+2)*(nz+2) );  
 
-  compute_pml_3d( RAJA::Index_type(ny), RAJA::Index_type(nz),
-                  RAJA::Index_type(x3), RAJA::Index_type(x4),
-                  RAJA::Index_type(y3), RAJA::Index_type(y4),
-                  RAJA::Index_type(z3), RAJA::Index_type(z4),
-                  RAJA::Index_type(lx), RAJA::Index_type(ly), RAJA::Index_type(lz),
-                  hdx_2, hdy_2, hdz_2,
-                  coefxView, coefyView, coefzView,
-                  uView, vpView, etaView, vView, phiView ); 
+  compute_pml_3d_for_restrict( RAJA::Index_type(ny), RAJA::Index_type(nz),
+			       RAJA::Index_type(x3), RAJA::Index_type(x4),
+			       RAJA::Index_type(y3), RAJA::Index_type(y4),
+			       RAJA::Index_type(z3), RAJA::Index_type(z4),
+			       RAJA::Index_type(lx), RAJA::Index_type(ly), RAJA::Index_type(lz),
+			       hdx_2, hdy_2, hdz_2,
+			       coefxView, coefyView, coefzView,
+			       uView, vpView, etaView, vView, phiView ); 
 #endif
 #if KERNEL_OPTION == 5
   if( !haveRun )
