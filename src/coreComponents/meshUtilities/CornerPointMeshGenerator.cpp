@@ -114,7 +114,7 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
   // we can start constructing the mesh
 
   // Step 1: fill vertex information
-
+ 
   arrayView2d< real64 const > vertexPositions = m_cpMeshBuilder->vertexPositions();
   arrayView1d< globalIndex const > vertexToGlobalVertex = m_cpMeshBuilder->vertexToGlobalVertex();
   localIndex const nVertices = vertexPositions.size( 0 );
@@ -126,6 +126,9 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
   SortedArray< localIndex > & allVertices =
     vertexSets.registerWrapper< SortedArray< localIndex > >( string( "all" ) ).reference();
 
+  array1d< localIndex > vertexIsUsed( vertexPositions.size( 0 ) );
+  vertexIsUsed.setValues< serialPolicy >( 0 );  
+  
   real64 xMin[3] = { std::numeric_limits< real64 >::max() };
   real64 xMax[3] = { std::numeric_limits< real64 >::min() };
 
@@ -207,9 +210,21 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
       cellToVertex( iOwnedActiveCellInRegion, 6 ) = cpVertexToVertex( iFirstCPVertex + 6 );
       cellToVertex( iOwnedActiveCellInRegion, 7 ) = cpVertexToVertex( iFirstCPVertex + 7 );
 
+      std::set< localIndex > myVertices;
+      for( localIndex ii = 0; ii < 8; ++ii )
+      {
+	myVertices.insert( cellToVertex( iOwnedActiveCellInRegion, ii ) ); 
+        vertexIsUsed( cellToVertex( iOwnedActiveCellInRegion, ii ) ) = 1;
+      }
+      if( myVertices.size() != 8 )
+      {
+	std::cout << "++++++++==== found a degenerate element ====++++++++" << std::endl;
+      }
+      
       cellLocalToGlobal( iOwnedActiveCellInRegion ) = ownedActiveCellToGlobalCell( iOwnedActiveCellInRegion );
     }
 
+   
     // Step 3: fill property information
 
     // Step 3.a: fill porosity in active cells
@@ -222,7 +237,7 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
         localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
         localIndex const iActiveCell = ownedActiveCellToActiveCell( iOwnedActiveCell );
         localIndex const iCell = activeCellToCell( iActiveCell );
-        referencePorosity( iOwnedActiveCellInRegion ) = porosityField( iCell );
+        referencePorosity( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.053, porosityField( iCell ) );
       }
     }
 
@@ -245,6 +260,15 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
       }
     }
   }
+
+  for( localIndex iii = 0; iii < vertexIsUsed.size(); ++iii )
+  {
+    if( vertexIsUsed( iii ) == 0 )
+    {
+      std::cout << "===We have a problem===" << std::endl;
+    }
+  }
+  
 }
 
 REGISTER_CATALOG_ENTRY( MeshGeneratorBase, CornerPointMeshGenerator, string const &, Group * const )

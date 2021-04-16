@@ -177,10 +177,11 @@ void CellElementSubRegion::fixUpDownMaps( bool const clearIfUnmapped )
                                     m_unmappedGlobalIndicesInNodelist,
                                     clearIfUnmapped );
 
-  ObjectManagerBase::fixUpDownMaps( edgeList(),
+  /*
+     ObjectManagerBase::fixUpDownMaps( edgeList(),
                                     m_unmappedGlobalIndicesInEdgelist,
                                     clearIfUnmapped );
-
+   */
   ObjectManagerBase::fixUpDownMaps( faceList(),
                                     m_unmappedGlobalIndicesInFacelist,
                                     clearIfUnmapped );

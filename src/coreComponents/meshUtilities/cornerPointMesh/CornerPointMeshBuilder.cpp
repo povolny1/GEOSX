@@ -185,8 +185,14 @@ void CornerPointMeshBuilder::buildCornerPointCells()
           localIndex const order[nCPVerticesPerCell] = { 4, 5, 6, 7, 0, 1, 2, 3 };
           for( localIndex pos = 0; pos < nCPVerticesPerCell; ++pos )
           {
-            cpVertexPositions( iFirstVertexLocal + pos, 0 ) = xPos( order[pos] );
-            cpVertexPositions( iFirstVertexLocal + pos, 1 ) = yPos( order[pos] );
+	    real64 const xCenter = -0.003281;
+	    real64 const yCenter = 6811.79;
+	    real64 const angle = 14;
+	    real64 const pi = 3.14159265;
+	    real64 newXPos =  (xPos( order[pos] )-xCenter) * cos(- angle*pi/180 ) + (yPos( order[pos] )-yCenter) * sin(- angle*pi/180 );
+	    real64 newYPos = -(xPos( order[pos] )-xCenter) * sin(- angle*pi/180 ) + (yPos( order[pos] )-yCenter) * cos(- angle*pi/180 );
+	    cpVertexPositions( iFirstVertexLocal + pos, 0 ) = newXPos;//xPos( order[pos] );
+	    cpVertexPositions( iFirstVertexLocal + pos, 1 ) = newYPos;//yPos( order[pos] );
             cpVertexPositions( iFirstVertexLocal + pos, 2 ) = -zPos( order[pos] );
             cpVertexToGlobalCPVertex( iFirstVertexLocal + pos ) = iFirstVertexGlobal + order[pos];
             cpVertexIsInsidePartition( iFirstVertexLocal + pos ) = cpVertexIsInside( order[pos] );
@@ -338,10 +344,22 @@ bool CornerPointMeshBuilder::computeCellCoordinates( localIndex const i, localIn
   yPos( 7 ) = slopePos7 * (coord( ip3 + 5 ) - coord( ip3 + 2 )) + coord( ip3 + 2 );
   cpVertexIsInside( 7 ) = fourthPillarIsInside;
 
-  return true;
+  return hasUniqueVertices( xPos, yPos, zPos );
 }
 
-
+bool CornerPointMeshBuilder::hasUniqueVertices( array1d< real64 > const & xPos,
+                                                array1d< real64 > const & yPos,
+                                                array1d< real64 > const & zPos )
+{
+  std::set< Vertex, CompareVertices > uniqueVerticesHelper;
+  for( localIndex i = 0; i < 8; ++i )
+  {
+    Vertex v( xPos( i ), yPos( i ), zPos( i) );
+    uniqueVerticesHelper.insert( v );
+  }
+  return (uniqueVerticesHelper.size() == 8);
+}
+  
 void CornerPointMeshBuilder::formRegions()
 {
   array1d< localIndex > const & activeCellToCell = m_cells.m_activeCellToCell;

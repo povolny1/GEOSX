@@ -259,6 +259,11 @@ private:
                                       array1d< real64 > & zPos,
                                       array1d< bool > & cpVertexIsInside );
 
+  static bool hasUniqueVertices( array1d< real64 > const & xPos,
+				 array1d< real64 > const & yPos,
+				 array1d< real64 > const & zPos );
+
+  
   /**
    * @brief Populate the "reverse maps" from cellToActiveCell and activeCellToOwnedActiveCell
    * @param[in] nCells number of cells in the MPI partition
