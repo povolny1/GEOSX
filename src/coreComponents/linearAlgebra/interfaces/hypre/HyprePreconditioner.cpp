@@ -3,7 +3,7 @@
  * ------------------------------------------------------------------------------------------------------------
  * SPDX-License-Identifier: LGPL-2.1-only
  *
- * Copyright (c) 2018-2020 Lawrence Livermore National Security LLC
+ (c) 2018-2020 Lawrence Livermore National Security LLC
  * Copyright (c) 2018-2020 The Board of Trustees of the Leland Stanford Junior University
  * Copyright (c) 2018-2020 Total, S.A
  * Copyright (c) 2019-     GEOSX Contributors
@@ -423,9 +423,15 @@ void createMGR( LinearSolverParameters const & params,
     HYPRE_BoomerAMGSetMaxIter( mgrData.mechSolver.ptr, 1 );
     HYPRE_BoomerAMGSetPrintLevel( mgrData.mechSolver.ptr, 0 );
     HYPRE_BoomerAMGSetRelaxOrder( mgrData.mechSolver.ptr, 1 );
-    HYPRE_BoomerAMGSetAggNumLevels( mgrData.mechSolver.ptr, 1 );
+    HYPRE_BoomerAMGSetAggNumLevels( mgrData.mechSolver.ptr, 0 );
     HYPRE_BoomerAMGSetNumFunctions( mgrData.mechSolver.ptr, 3 );
 
+
+    //HYPRE_BoomerAMGSetAggNumLevels( mgrData.mechSolver.ptr, 0 );    
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothType( mgrData.mechSolver.ptr, 5 ) );  
+    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( mgrData.mechSolver.ptr, 0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( mgrData.mechSolver.ptr, 1e-3) ); 
+    
     mgrData.mechSolver.setup = HYPRE_BoomerAMGSetup;
     mgrData.mechSolver.solve = HYPRE_BoomerAMGSolve;
     mgrData.mechSolver.destroy = HYPRE_BoomerAMGDestroy;
@@ -541,13 +547,13 @@ void HyprePreconditioner::setup( Matrix const & mat )
   // To be able to use Hypre preconditioner (e.g., BoomerAMG) we need to disable floating point exceptions
   {
     LvArray::system::FloatingPointExceptionGuard guard( FE_ALL_EXCEPT );
-    GEOSX_LAI_CHECK_ERROR( m_precond->setup( m_precond->ptr, precondMat.unwrapped(), nullptr, nullptr ) );
 
     // Perform setup of the mechanics F-solver with SDC matrix
     if( m_mgrData && m_mgrData->mechSolver.ptr )
     {
-      m_mgrData->mechSolver.setup( m_mgrData->mechSolver.ptr, m_precondMatrix.unwrapped(), nullptr, nullptr );
+      GEOSX_LAI_CHECK_ERROR( m_mgrData->mechSolver.setup( m_mgrData->mechSolver.ptr, m_precondMatrix.unwrapped(), nullptr, nullptr ) );
     }
+    GEOSX_LAI_CHECK_ERROR( m_precond->setup( m_precond->ptr, precondMat.unwrapped(), nullptr, nullptr ) );
   }
 }
 

@@ -360,6 +360,19 @@ void PoroelasticSolver::assembleSystem( real64 const time_n,
                                                                        gravityVectorData,
                                                                        m_flowSolver->fluidModelNames() );
 
+  string const regionName = m_solidSolver->targetRegionNames()[1];
+  string const solidMaterialName = m_solidSolver->solidMaterialNames()[1];
+  
+  m_solidSolver->assembleSystemInRegion( time_n,
+					 dt,
+					 domain,
+					 dofManager,
+					 regionName,
+					 solidMaterialName,
+					 localMatrix,
+					 localRhs );
+
+  
   // Face-based contributions
   m_flowSolver->assembleFluxTerms( time_n, dt,
                                    domain,

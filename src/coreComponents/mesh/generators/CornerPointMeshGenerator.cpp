@@ -165,11 +165,6 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
     CellBlock * cellBlock = &cellBlockManager.getGroup( keys::cellBlocks ).
                               registerGroup< CellBlock >( "DEFAULT_HEX_"+std::to_string( er ) );
 
-    if( regionId.sizeOfArray( er ) == 0 )
-    {
-      continue;
-    }
-
     // temporary accessors while we only support the conforming case
     // this is not what we ultimately want, which is instead:
     //  -> map from elem to faces
@@ -191,6 +186,11 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
     auto & cellToVertex = cellBlock->nodeList(); // TODO: remove auto
     cellToVertex.resize( nOwnedActiveCellsInRegion, 8 );
 
+    if( regionId.sizeOfArray( er ) == 0 )
+    {
+      std::cout << "cellToVertex.size() = " << cellToVertex.size() << std::endl;
+    }
+   
     for( localIndex iOwnedActiveCellInRegion = 0; iOwnedActiveCellInRegion < nOwnedActiveCellsInRegion; ++iOwnedActiveCellInRegion )
     {
       localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
@@ -229,6 +229,15 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
 
     // Step 3.a: fill porosity in active cells
     arrayView1d< real64 const > porosityField = m_cpMeshBuilder->porosityField();
+
+    if( regionId.sizeOfArray( er ) == 0 )
+    {
+      std::cout << "porosityField.size() = " << porosityField.size()
+		<< " porosityField.empty() = " << porosityField.empty() << std::endl;
+    }
+
+
+    
     if( !porosityField.empty() )
     {
       arrayView1d< real64 > referencePorosity = cellBlock->addProperty< array1d< real64 > >( "referencePorosity" ).toView();

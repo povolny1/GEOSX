@@ -118,6 +118,17 @@ public:
                array1d< real64 > & localSolution,
                bool const setSparsity = false ) override;
 
+  void
+  assembleSystemInRegion( real64 const time,
+			  real64 const dt,
+			  DomainPartition & domain,
+			  DofManager const & dofManager,
+			  string const & regionName,
+			  string const & solidMaterialName,			  
+			  CRSMatrixView< real64, globalIndex const > const & localMatrix,
+			  arrayView1d< real64 > const & localRhs );
+    
+  
   virtual void
   assembleSystem( real64 const time,
                   real64 const dt,
@@ -158,7 +169,19 @@ public:
 
   /**@}*/
 
-
+  template< typename CONSTITUTIVE_BASE,
+            template< typename SUBREGION_TYPE,
+                      typename CONSTITUTIVE_TYPE,
+                      typename FE_TYPE > class KERNEL_TEMPLATE,
+            typename ... PARAMS >
+  void assemblyLaunch( DomainPartition & domain,
+                       DofManager const & dofManager,
+		       string const & regionName,
+		       string const & solidMaterialName,
+                       CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                       arrayView1d< real64 > const & localRhs,
+                       PARAMS && ... params );
+  
   template< typename CONSTITUTIVE_BASE,
             template< typename SUBREGION_TYPE,
                       typename CONSTITUTIVE_TYPE,
@@ -309,6 +332,57 @@ ENUM_STRINGS( SolidMechanicsLagrangianFEM::TimeIntegrationOption, "QuasiStatic",
 //**********************************************************************************************************************
 //**********************************************************************************************************************
 //**********************************************************************************************************************
+
+template< typename CONSTITUTIVE_BASE,
+          template< typename SUBREGION_TYPE,
+                    typename CONSTITUTIVE_TYPE,
+                    typename FE_TYPE > class KERNEL_TEMPLATE,
+          typename ... PARAMS >
+void SolidMechanicsLagrangianFEM::assemblyLaunch( DomainPartition & domain,
+                                                  DofManager const & dofManager,
+						  string const & regionName,
+						  string const & solidMaterialName,
+                                                  CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                                                  arrayView1d< real64 > const & localRhs,
+                                                  PARAMS && ... params )
+{
+  GEOSX_MARK_FUNCTION;
+  MeshLevel & mesh = domain.getMeshBody( 0 ).getMeshLevel( 0 );
+
+  NodeManager const & nodeManager = mesh.getNodeManager();
+
+  string const dofKey = dofManager.getKey( dataRepository::keys::TotalDisplacement );
+  arrayView1d< globalIndex const > const & dofNumber = nodeManager.getReference< globalIndex_array >( dofKey );
+
+  real64 const gravityVectorData[3] = LVARRAY_TENSOROPS_INIT_LOCAL_3( gravityVector() );
+
+  array1d< string > targetRegionName;
+  targetRegionName.emplace_back( regionName );
+  array1d< string > targetSolidMaterialName;
+  targetSolidMaterialName.emplace_back( solidMaterialName );
+  
+  m_maxForce = finiteElement::
+                 regionBasedKernelApplication< parallelDevicePolicy< 32 >,
+                                               CONSTITUTIVE_BASE,
+                                               CellElementSubRegion,
+                                               KERNEL_TEMPLATE >( mesh,
+                                                                  targetRegionName.toViewConst(),
+                                                                  this->getDiscretizationName(),
+                                                                  targetSolidMaterialName.toViewConst(),
+                                                                  dofNumber,
+                                                                  dofManager.rankOffset(),
+                                                                  localMatrix,
+                                                                  localRhs,
+                                                                  gravityVectorData,
+                                                                  std::forward< PARAMS >( params )... );
+
+
+  applyContactConstraint( dofManager,
+                          domain,
+                          localMatrix,
+                          localRhs );
+
+}
 
 
 template< typename CONSTITUTIVE_BASE,
