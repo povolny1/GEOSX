@@ -95,6 +95,17 @@ public:
                        real64 const scalingFactor,
                        DomainPartition & domain ) override;
 
+  virtual real64
+  scalingForSystemSolution( DomainPartition const & domain,
+                            DofManager const & dofManager,
+                            arrayView1d< real64 const > const & localSolution ) override;
+
+  virtual bool
+  checkSystemSolution( DomainPartition const & domain,
+                       DofManager const & dofManager,
+                       arrayView1d< real64 const > const & localSolution,
+                       real64 const scalingFactor ) override;
+  
   virtual void
   implicitStepComplete( real64 const & time_n,
                         real64 const & dt,
@@ -109,6 +120,8 @@ public:
               int const cycleNumber,
               DomainPartition & domain ) override;
 
+  string getFlowSolverName() const { return m_flowSolverName; }
+  
   enum class CouplingTypeOption : integer
   {
     FIM

@@ -23,7 +23,10 @@
 #include "common/TimingMacros.hpp"
 #include "constitutive/fluid/MultiFluidBase.hpp"
 #include "physicsSolvers/fluidFlow/CompositionalMultiphaseBase.hpp"
+#include "physicsSolvers/fluidFlow/CompositionalMultiphaseFVM.hpp"
+#include "physicsSolvers/fluidFlow/CompositionalMultiphaseHybridFVM.hpp"
 #include "physicsSolvers/fluidFlow/wells/CompositionalMultiphaseWell.hpp"
+#include "physicsSolvers/multiphysics/MultiphasePoroelasticSolver.hpp"
 
 namespace geosx
 {
@@ -35,12 +38,32 @@ CompositionalMultiphaseReservoir::CompositionalMultiphaseReservoir( const string
                                                                     Group * const parent ):
   ReservoirSolverBase( name, parent )
 {
-  m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::compositionalMultiphaseReservoir;
 }
 
 CompositionalMultiphaseReservoir::~CompositionalMultiphaseReservoir()
 {}
 
+void CompositionalMultiphaseReservoir::postProcessInput()
+{
+  ReservoirSolverBase::postProcessInput();
+
+  if( dynamicCast< CompositionalMultiphaseFVM const * >( m_flowSolver ) )
+  {
+    m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::compositionalMultiphaseReservoir;
+  }
+  else if( dynamicCast< CompositionalMultiphaseHybridFVM const * >( m_flowSolver ) )
+  {
+    GEOSX_ERROR("Already supported, but not in this branch");  
+  }
+  else if( dynamicCast< MultiphasePoroelasticSolver const * >( m_flowSolver ) )
+  {
+    m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::multiphasePoroelasticWithWells;    
+  }
+  m_linearSolverParameters.get().mgr.separateComponents = true;
+  m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
+  m_linearSolverParameters.get().dofsPerNode = 3;
+}
+  
 void CompositionalMultiphaseReservoir::addCouplingSparsityPattern( DomainPartition const & domain,
                                                                    DofManager const & dofManager,
                                                                    SparsityPatternView< globalIndex > const & pattern ) const

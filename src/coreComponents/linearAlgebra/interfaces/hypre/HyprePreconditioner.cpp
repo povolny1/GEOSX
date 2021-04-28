@@ -405,6 +405,11 @@ void createMGR( LinearSolverParameters const & params,
       setStrategy< SinglePhaseWithWells >( params.mgr, numComponentsPerField, precond, mgrData );
       break;
     }
+    case LinearSolverParameters::MGR::StrategyType::singlePhasePoroelasticWithWells:
+    {
+      setStrategy< SinglePhasePoroelasticWithWells >( params.mgr, numComponentsPerField, precond, mgrData );
+      break;
+    }
     default:
     {
       GEOSX_ERROR( "Unsupported MGR strategy: " << params.mgr.strategy );

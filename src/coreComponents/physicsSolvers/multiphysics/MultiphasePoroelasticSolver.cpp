@@ -297,6 +297,28 @@ void MultiphasePoroelasticSolver::applySystemSolution( DofManager const & dofMan
   m_flowSolver->applySystemSolution( dofManager, localSolution, -scalingFactor, domain );
 }
 
+bool MultiphasePoroelasticSolver::checkSystemSolution( DomainPartition const & domain,
+						       DofManager const & dofManager,
+						       arrayView1d< real64 const > const & localSolution,
+						       real64 const scalingFactor )
+{
+  bool const validSolidSolution = m_solidSolver->checkSystemSolution( domain, dofManager, localSolution, scalingFactor );  
+  bool const validFlowSolution  = m_flowSolver->checkSystemSolution( domain, dofManager, localSolution, scalingFactor );
+
+  return ( validSolidSolution && validFlowSolution );
+}
+
+real64 MultiphasePoroelasticSolver::scalingForSystemSolution( DomainPartition const & domain,
+							      DofManager const & dofManager,
+							      arrayView1d< real64 const > const & localSolution )
+{
+  real64 const solidScalingFactor = m_solidSolver->scalingForSystemSolution( domain, dofManager, localSolution );  
+  real64 const flowScalingFactor = m_flowSolver->scalingForSystemSolution( domain, dofManager, localSolution ); 
+
+  return LvArray::math::min( flowScalingFactor, solidScalingFactor );
+}
+  
+  
 REGISTER_CATALOG_ENTRY( SolverBase, MultiphasePoroelasticSolver, string const &, Group * const )
 
 } /* namespace geosx */

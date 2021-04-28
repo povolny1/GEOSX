@@ -21,7 +21,12 @@
 
 #include "common/TimingMacros.hpp"
 #include "mainInterface/ProblemManager.hpp"
-#include "physicsSolvers/fluidFlow/FlowSolverBase.hpp"
+#include "physicsSolvers/fluidFlow/SinglePhaseFVM.hpp"
+#include "physicsSolvers/fluidFlow/SinglePhaseHybridFVM.hpp"
+#include "physicsSolvers/fluidFlow/CompositionalMultiphaseFVM.hpp"
+#include "physicsSolvers/fluidFlow/CompositionalMultiphaseHybridFVM.hpp"
+#include "physicsSolvers/multiphysics/PoroelasticSolver.hpp"
+#include "physicsSolvers/multiphysics/MultiphasePoroelasticSolver.hpp"
 #include "physicsSolvers/fluidFlow/wells/WellSolverBase.hpp"
 
 namespace geosx
@@ -54,17 +59,41 @@ ReservoirSolverBase::~ReservoirSolverBase()
 
 void ReservoirSolverBase::postProcessInput()
 {
+  std::cout << "beginning ReservoirSolverBase::postProcessInput()" << std::endl;
+  
   SolverBase::postProcessInput();
-
-  m_flowSolver = &this->getParent().getGroup< FlowSolverBase >( m_flowSolverName );
+  
+  m_flowSolver = &this->getParent().getGroup< SolverBase >( m_flowSolverName );
   m_wellSolver = &this->getParent().getGroup< WellSolverBase >( m_wellSolverName );
 
-  m_wellSolver->setFlowSolverName( m_flowSolverName );
-  m_flowSolver->setReservoirWellsCoupling();
+  if( dynamicCast< CompositionalMultiphaseFVM const * >( m_flowSolver ) ||
+      dynamicCast< CompositionalMultiphaseHybridFVM const * >( m_flowSolver ) || 
+      dynamicCast< SinglePhaseFVM< SinglePhaseBase > const * >( m_flowSolver ) ||
+      dynamicCast< SinglePhaseHybridFVM const * >( m_flowSolver ) )
+  {
+    m_wellSolver->setFlowSolverName( m_flowSolverName );
+    //m_flowSolver->setReservoirWellsCoupling();
+  }
+  else if( dynamicCast< PoroelasticSolver const * >( m_flowSolver ) )
+  {
+    PoroelasticSolver const * solver = dynamicCast< PoroelasticSolver const * >( m_flowSolver );
+    m_wellSolver->setFlowSolverName( solver->getFlowSolverName() );
+  }
+  else if( dynamicCast< MultiphasePoroelasticSolver const * >( m_flowSolver ) )
+  {
+    MultiphasePoroelasticSolver const * solver = dynamicCast< MultiphasePoroelasticSolver const * >( m_flowSolver );
+    m_wellSolver->setFlowSolverName( solver->getFlowSolverName() );
+  }
+  else
+  {
+    GEOSX_ERROR("We should not end up here"); 
+  }
+  std::cout << "end ReservoirSolverBase::postProcessInput()" << std::endl;  
 }
 
 void ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()
 {
+  std::cout << "beginning ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()" << std::endl;    
   SolverBase::initializePostInitialConditionsPreSubGroups( );
 
   DomainPartition & domain = this->getGroupByPath< DomainPartition >( "/Problem/domain" );
@@ -86,6 +115,7 @@ void ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()
 
   // bind the stored reservoir views to the current domain
   resetViews( domain );
+  std::cout << "end ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()" << std::endl;      
 }
 
 
@@ -116,15 +146,18 @@ real64 ReservoirSolverBase::solverStep( real64 const & time_n,
 void ReservoirSolverBase::setupDofs( DomainPartition const & domain,
                                      DofManager & dofManager ) const
 {
-  m_flowSolver->setupDofs( domain, dofManager );
+  std::cout << "beginning ReservoirSolverBase::setupDofs()" << std::endl;        
+  m_flowSolver->setupDofs( domain, dofManager ); // OK
   m_wellSolver->setupDofs( domain, dofManager );
   // TODO: add coupling when dofManager can support perforation connectors
+  std::cout << "end ReservoirSolverBase::setupDofs()" << std::endl;          
 }
 
 void ReservoirSolverBase::addCouplingNumNonzeros( DomainPartition & domain,
                                                   DofManager & dofManager,
                                                   arrayView1d< localIndex > const & rowLengths ) const
 {
+  std::cout << "begin ReservoirSolverBase::addCouplingNumNonZeros()" << std::endl;            
   localIndex const resNDOF = m_wellSolver->numDofPerResElement();
   localIndex const wellNDOF = m_wellSolver->numDofPerWellElement();
 
@@ -194,6 +227,7 @@ void ReservoirSolverBase::addCouplingNumNonzeros( DomainPartition & domain,
       }
     } );
   } );
+  std::cout << "end ReservoirSolverBase::addCouplingNumNonZeros()" << std::endl;              
 }
 
 void ReservoirSolverBase::setupSystem( DomainPartition & domain,
@@ -203,6 +237,7 @@ void ReservoirSolverBase::setupSystem( DomainPartition & domain,
                                        array1d< real64 > & localSolution,
                                        bool const )
 {
+  std::cout << "begin ReservoirSolverBase::setupSystem()" << std::endl;              
   GEOSX_MARK_FUNCTION;
 
   dofManager.setMesh( domain, 0, 0 );
@@ -246,6 +281,7 @@ void ReservoirSolverBase::setupSystem( DomainPartition & domain,
   localMatrix.setName( this->getName() + "/localMatrix" );
   localRhs.setName( this->getName() + "/localRhs" );
   localSolution.setName( this->getName() + "/localSolution" );
+  std::cout << "end ReservoirSolverBase::setupSystem()" << std::endl;                
 }
 
 
@@ -253,9 +289,11 @@ void ReservoirSolverBase::implicitStepSetup( real64 const & time_n,
                                              real64 const & dt,
                                              DomainPartition & domain )
 {
+  std::cout << "beginning ReservoirSolverBase::implicitStepSetup()" << std::endl;                  
   // setup the individual solvers
   m_flowSolver->implicitStepSetup( time_n, dt, domain );
   m_wellSolver->implicitStepSetup( time_n, dt, domain );
+  std::cout << "end ReservoirSolverBase::implicitStepSetup()" << std::endl;                    
 }
 
 
@@ -271,7 +309,7 @@ void ReservoirSolverBase::assembleSystem( real64 const time_n,
                                 domain,
                                 dofManager,
                                 localMatrix,
-                                localRhs );
+                                localRhs ); // OK
 
   /*
    * This redundant call to UpdateStateAll is here to make sure that we compute the
@@ -325,7 +363,7 @@ real64 ReservoirSolverBase::calculateResidualNorm( DomainPartition const & domai
                                                    arrayView1d< real64 const > const & localRhs )
 {
   // compute norm of reservoir equations residuals
-  real64 const reservoirResidualNorm = m_flowSolver->calculateResidualNorm( domain, dofManager, localRhs );
+  real64 const reservoirResidualNorm = m_flowSolver->calculateResidualNorm( domain, dofManager, localRhs ); // OK
   // compute norm of well equations residuals
   real64 const wellResidualNorm      = m_wellSolver->calculateResidualNorm( domain, dofManager, localRhs );
 
@@ -349,7 +387,7 @@ bool ReservoirSolverBase::checkSystemSolution( DomainPartition const & domain,
                                                arrayView1d< real64 const > const & localSolution,
                                                real64 const scalingFactor )
 {
-  bool const validReservoirSolution = m_flowSolver->checkSystemSolution( domain, dofManager, localSolution, scalingFactor );
+  bool const validReservoirSolution = m_flowSolver->checkSystemSolution( domain, dofManager, localSolution, -scalingFactor ); // OK
   bool const validWellSolution      = m_wellSolver->checkSystemSolution( domain, dofManager, localSolution, scalingFactor );
 
   return ( validReservoirSolution && validWellSolution );
@@ -361,7 +399,7 @@ void ReservoirSolverBase::applySystemSolution( DofManager const & dofManager,
                                                DomainPartition & domain )
 {
   // update the reservoir variables
-  m_flowSolver->applySystemSolution( dofManager, localSolution, scalingFactor, domain );
+  m_flowSolver->applySystemSolution( dofManager, localSolution, -scalingFactor, domain ); // OK
   // update the well variables
   m_wellSolver->applySystemSolution( dofManager, localSolution, scalingFactor, domain );
 }
@@ -369,7 +407,7 @@ void ReservoirSolverBase::applySystemSolution( DofManager const & dofManager,
 void ReservoirSolverBase::resetStateToBeginningOfStep( DomainPartition & domain )
 {
   // reset reservoir variables
-  m_flowSolver->resetStateToBeginningOfStep( domain );
+  m_flowSolver->resetStateToBeginningOfStep( domain ); // OK
   // reset well variables
   m_wellSolver->resetStateToBeginningOfStep( domain );
 }
@@ -378,7 +416,7 @@ void ReservoirSolverBase::implicitStepComplete( real64 const & time_n,
                                                 real64 const & dt,
                                                 DomainPartition & domain )
 {
-  m_flowSolver->implicitStepComplete( time_n, dt, domain );
+  m_flowSolver->implicitStepComplete( time_n, dt, domain ); // OK
   m_wellSolver->implicitStepComplete( time_n, dt, domain );
 }
 
@@ -389,7 +427,7 @@ real64 ReservoirSolverBase::scalingForSystemSolution( DomainPartition const & do
                                                       DofManager const & dofManager,
                                                       arrayView1d< real64 const > const & localSolution )
 {
-  real64 const flowScalingFactor = m_flowSolver->scalingForSystemSolution( domain, dofManager, localSolution );
+  real64 const flowScalingFactor = m_flowSolver->scalingForSystemSolution( domain, dofManager, localSolution ); // OK
   real64 const wellScalingFactor = m_wellSolver->scalingForSystemSolution( domain, dofManager, localSolution );
 
   GEOSX_LOG_LEVEL_RANK_0( 2, "Scaling factor for the reservoir: " << flowScalingFactor
