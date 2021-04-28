@@ -3,6 +3,7 @@
 ==================== ============== ========================== 
 Name                 Type           Description                
 ==================== ============== ========================== 
+BiotCoefficient      real64_array   (no description available) 
 c11                  real64_array   Elastic Bulk Modulus Field 
 c13                  real64_array   Elastic Bulk Modulus Field 
 c33                  real64_array   Elastic Bulk Modulus Field 

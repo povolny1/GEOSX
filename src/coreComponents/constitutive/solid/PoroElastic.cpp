@@ -41,7 +41,7 @@ PoroElastic< BASE >::PoroElastic( string const & name, Group * const parent ):
   m_dPVMult_dPressure(),
   m_poreVolumeRelation()
 {
-  this->registerWrapper( viewKeyStruct::biotCoefficientString(), &m_biotCoefficient ).
+  this->registerWrapper( viewKeyStruct::inputBiotCoefficientString(), &m_inputBiotCoefficient ).
     setApplyDefaultValue( 1.0 ).
     setInputFlag( InputFlags::OPTIONAL ).
     setDescription( "Biot's coefficient" );
@@ -56,6 +56,9 @@ PoroElastic< BASE >::PoroElastic( string const & name, Group * const parent ):
     setInputFlag( InputFlags::OPTIONAL ).
     setDescription( "ReferencePressure" );
 
+  this->registerWrapper( viewKeyStruct::biotCoefficientString(), &m_biotCoefficient ).
+    setApplyDefaultValue( 0.0 ).
+    setDescription( "" );
 
   this->registerWrapper( viewKeyStruct::poreVolumeMultiplierString(), &m_poreVolumeMultiplier ).
     setApplyDefaultValue( 1.0 ).
@@ -96,6 +99,13 @@ void PoroElastic< BASE >::allocateConstitutiveData( dataRepository::Group & pare
   m_poreVolumeMultiplier.resize( 0, numConstitutivePointsPerParentIndex );
   m_dPVMult_dPressure.resize( 0, numConstitutivePointsPerParentIndex );
   BASE::allocateConstitutiveData( parent, numConstitutivePointsPerParentIndex );
+  for( localIndex i = 0; i < m_biotCoefficient.size(); ++i )
+  {
+    if( m_biotCoefficient[i] <= 0 )
+    {
+      m_biotCoefficient[i] = m_inputBiotCoefficient;
+    }
+  }
 }
 
 template< typename BASE >

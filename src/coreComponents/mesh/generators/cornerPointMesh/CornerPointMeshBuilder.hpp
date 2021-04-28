@@ -169,6 +169,37 @@ public:
    */
   arrayView2d< real64 const > permeabilityField() const { return m_parser.perm().toViewConst(); }
 
+  /**
+   * @brief Const getter for the net-to-gross field (includes inactive cells!)
+   * @return an array of net-to-gross values
+   */
+  arrayView1d< real64 const > netToGrossField() const { return m_parser.netToGross().toViewConst(); }
+
+  /**
+   * @brief Const getter for the solid density field (includes inactive cells!)
+   * @return an array of solid density values
+   */
+  arrayView1d< real64 const > solidDensityField() const { return m_parser.solidDensity().toViewConst(); }
+
+  /**
+   * @brief Const getter for the Biot coefficient field (includes inactive cells!)
+   * @return an array of Biot coefficient values
+   */
+  arrayView1d< real64 const > biotCoefficientField() const { return m_parser.biotCoefficient().toViewConst(); }
+
+  /**
+   * @brief Const getter for the youngs modulus field (includes inactive cells!)
+   * @return an array of youngs modulus values
+   */
+  arrayView1d< real64 const > youngsModulusField() const { return m_parser.youngsModulus().toViewConst(); }
+
+  /**
+   * @brief Const getter for the poisson ratio field (includes inactive cells!)
+   * @return an array of poisson ratio values
+   */
+  arrayView1d< real64 const > poissonRatioField() const { return m_parser.poissonRatio().toViewConst(); }
+
+
   // regions
 
   /**
@@ -260,10 +291,10 @@ private:
                                       array1d< bool > & cpVertexIsInside );
 
   static bool hasUniqueVertices( array1d< real64 > const & xPos,
-				 array1d< real64 > const & yPos,
-				 array1d< real64 > const & zPos );
+                                 array1d< real64 > const & yPos,
+                                 array1d< real64 > const & zPos );
 
-  
+
   /**
    * @brief Populate the "reverse maps" from cellToActiveCell and activeCellToOwnedActiveCell
    * @param[in] nCells number of cells in the MPI partition

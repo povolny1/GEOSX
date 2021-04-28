@@ -138,6 +138,26 @@ void CornerPointMeshParser::readMesh( Path const & filePath,
     {
       readLocalPROP( meshFile, dims, m_poro );
     }
+    else if( line == "NTG" )
+    {
+      readLocalPROP( meshFile, dims, m_netToGross );
+    }
+    else if( line == "BIOT" )
+    {
+      readLocalPROP( meshFile, dims, m_biotCoefficient );
+    }
+    else if( line == "YOUNG" )
+    {
+      readLocalPROP( meshFile, dims, m_youngsModulus );
+    }
+    else if( line == "POISSON" )
+    {
+      readLocalPROP( meshFile, dims, m_poissonRatio );
+    }
+    else if( line == "DENSITY" )
+    {
+      readLocalPROP( meshFile, dims, m_solidDensity );
+    }
     else if( line == "REGIONS" )
     {
       foundREGIONS = true;

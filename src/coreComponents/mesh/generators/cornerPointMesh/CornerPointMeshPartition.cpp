@@ -82,12 +82,12 @@ void CornerPointMeshPartition::scatterPartitionBoundaries( CornerPointMeshDimens
   array1d< localIndex > overlaps( sizePerRank*m_size );
   array1d< localIndex > neighbors( sizePerRank*m_size );
 
-  localIndex const sqRoot = static_cast<localIndex>( floor(sqrt( m_size )) );
-  if( m_size != 1 && sqRoot*sqRoot != static_cast<localIndex>( m_size ) )
+  localIndex const sqRoot = static_cast< localIndex >( floor( sqrt( m_size )) );
+  if( m_size != 1 && sqRoot*sqRoot != static_cast< localIndex >( m_size ) )
   {
-    GEOSX_ERROR("Please use a number of cores either equal to one, or to a^2");  
+    GEOSX_ERROR( "Please use a number of cores either equal to one, or to a^2" );
   }
-  
+
   // Step 0: the main rank partitions the mesh (temporary partitioning strategy, see below)
   if( m_myRank == m_mainRank )
   {
@@ -95,19 +95,19 @@ void CornerPointMeshPartition::scatterPartitionBoundaries( CornerPointMeshDimens
     // Ultimately here we will partition in both X and Y, taking into account active cells in each partition.
     // Once I am sure that everything works on large test case, I will rewrite this entirely
     localIndex const xSpacing = floor( static_cast< real64 >( dims.nX() )
-                                      / static_cast< real64 >( sqRoot ) );
+                                       / static_cast< real64 >( sqRoot ) );
     localIndex const ySpacing = floor( static_cast< real64 >( dims.nY() )
-                                      / static_cast< real64 >( sqRoot ) );
-    
+                                       / static_cast< real64 >( sqRoot ) );
+
     for( localIndex ix = 0; ix < sqRoot; ++ix )
     {
       for( localIndex iy = 0; iy < sqRoot; ++iy )
-      {	
-        localIndex const rank = iy*sqRoot+ix; 
+      {
+        localIndex const rank = iy*sqRoot+ix;
         boundaries( rank*sizePerRank )   = ix * xSpacing;
         boundaries( rank*sizePerRank+1 ) = iy * ySpacing;
-        boundaries( rank*sizePerRank+2 ) = ( ix < xSpacing-1 ) ? ( ix+1 ) * xSpacing - 1 : dims.nX()-1;
-        boundaries( rank*sizePerRank+3 ) = ( iy < ySpacing-1 ) ? ( iy+1 ) * ySpacing - 1 : dims.nY()-1;
+        boundaries( rank*sizePerRank+2 ) = ( ix < sqRoot-1 ) ? ( ix+1 ) * xSpacing - 1 : dims.nX()-1;
+        boundaries( rank*sizePerRank+3 ) = ( iy < sqRoot-1 ) ? ( iy+1 ) * ySpacing - 1 : dims.nY()-1;
 
         overlaps( rank*sizePerRank ) = ( boundaries( rank*sizePerRank ) == 0 ) ? 0 : 1;
         overlaps( rank*sizePerRank+1 ) = ( boundaries( rank*sizePerRank+1 ) == 0 ) ? 0 : 1;
@@ -123,20 +123,20 @@ void CornerPointMeshPartition::scatterPartitionBoundaries( CornerPointMeshDimens
 
     for( localIndex i = 0; i < m_size*sizePerRank; ++i )
     {
-      std::cout << "boundaries(" << i << ") = " << boundaries(i) << std::endl; 
+      std::cout << "boundaries(" << i << ") = " << boundaries( i ) << std::endl;
     }
     std::cout << std::endl;
     for( localIndex i = 0; i < m_size*sizePerRank; ++i )
     {
-      std::cout << "overlaps(" << i << ") = " << overlaps(i) << std::endl;
+      std::cout << "overlaps(" << i << ") = " << overlaps( i ) << std::endl;
     }
     std::cout << std::endl;
     for( localIndex i = 0; i < m_size*sizePerRank; ++i )
     {
-      std::cout << "neighbors(" << i << ") = " << neighbors(i) << std::endl;            
+      std::cout << "neighbors(" << i << ") = " << neighbors( i ) << std::endl;
     }
     std::cout << std::endl;
-    
+
     // for( localIndex rank = 0; rank < m_size; ++rank )
     // {
     //   boundaries( rank*sizePerRank )   = rank * spacing;

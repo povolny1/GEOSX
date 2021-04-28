@@ -318,6 +318,16 @@ void CellBlock::calculateElementGeometricQuantities( NodeManager const & nodeMan
   {
     calculateCellVolumesKernel( k, X );
   } );
+
+  if( this->hasWrapper( "netToGross" ) )
+  {
+    std::cout << "on a le net-to-gross" << std::endl;
+    arrayView1d< real64 const > const & netToGross = this->getReference< array1d< real64 > >( "netToGross" );
+    forAll< serialPolicy >( this->size(), [=] ( localIndex const k )
+    {
+      m_elementVolume[k] *= netToGross[k];
+    } );
+  }
 }
 
 REGISTER_CATALOG_ENTRY( ObjectManagerBase, CellBlock, string const &, Group * const )

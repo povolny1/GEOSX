@@ -116,18 +116,62 @@ protected:
 };
 
 /**
+ * @brief SinglePhaseWithWells strategy.
+ */
+class SinglePhaseWithWells : public MGRStrategyBase< 1 >
+{
+public:
+
+  /**
+   * @brief Constructor.
+   */
+  explicit SinglePhaseWithWells( arrayView1d< localIndex const > const & )
+    : MGRStrategyBase( 3 )
+  {
+    m_labels[0].push_back( 1 );
+    m_labels[0].push_back( 2 );
+    setupLabels();
+
+    m_levelInterpType[0] = 2; // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[0] = 0;
+
+    m_fRelaxMethod = 2; // AMG V-cycle
+    m_numGlobalSmoothSweeps = 0;
+  }
+
+  /**
+   * @brief Setup the MGR strategy.
+   * @param params MGR parameters
+   * @param precond preconditioner wrapper
+   * @param mgrData auxiliary MGR data
+   */
+  void setup( LinearSolverParameters::MGR const &,
+              HyprePrecWrapper & precond,
+              HypreMGRData & mgrData )
+  {
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCpointsByPointMarkerArray( precond.ptr,
+                                                                  m_numBlocks, numLevels,
+                                                                  m_numLabels, m_ptrLabels,
+                                                                  mgrData.pointMarkers.data() ) );
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetFRelaxMethod( precond.ptr, m_fRelaxMethod ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( precond.ptr, 1 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( precond.ptr, 1e-14 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( precond.ptr, 15 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( precond.ptr, m_levelInterpType ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( precond.ptr, m_levelCoarseGridMethod ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( precond.ptr, m_numGlobalSmoothSweeps ) );
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRDirectSolverCreate( &mgrData.coarseSolver.ptr ) );
+
+    mgrData.coarseSolver.setup = HYPRE_MGRDirectSolverSetup;
+    mgrData.coarseSolver.solve = HYPRE_MGRDirectSolverSolve;
+    mgrData.coarseSolver.destroy = HYPRE_MGRDirectSolverDestroy;
+  }
+};
+
+/**
  * @brief SinglePhasePoroelastic strategy.
- *
- * dofLabel: 0 = displacement, x-component
- * dofLabel: 1 = displacement, y-component
- * dofLabel: 2 = displacement, z-component
- * dofLabel: 3 = pressure
- *
- * Ingredients:
- * 1. F-points displacement (0,1,2), C-points pressure (3)
- * 2. F-points smoother: AMG, single V-cycle, separate displacement components
- * 3. C-points coarse-grid/Schur complement solver: boomer AMG
- * 4. Global smoother: none
  */
 class SinglePhasePoroelastic : public MGRStrategyBase< 1 >
 {
@@ -182,10 +226,6 @@ public:
     GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetTol( mgrData.coarseSolver.ptr, 0.0 ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetRelaxOrder( mgrData.coarseSolver.ptr, 1 ) );
 
-    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothType( mgrData.coarseSolver.ptr, 5 ) );  
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( mgrData.coarseSolver.ptr, 0 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( mgrData.coarseSolver.ptr, 1e-3) ); 
-    
     mgrData.coarseSolver.setup = HYPRE_BoomerAMGSetup;
     mgrData.coarseSolver.solve = HYPRE_BoomerAMGSolve;
     mgrData.coarseSolver.destroy = HYPRE_BoomerAMGDestroy;

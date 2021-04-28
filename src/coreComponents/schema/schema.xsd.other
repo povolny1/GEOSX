@@ -1175,6 +1175,8 @@
 		<xsd:attribute name="poreVolumeMultiplier" type="real64_array2d" />
 	</xsd:complexType>
 	<xsd:complexType name="PoroDruckerPragerType">
+		<!--BiotCoefficient => (no description available)-->
+		<xsd:attribute name="BiotCoefficient" type="real64_array" />
 		<!--bulkModulus => Elastic Bulk Modulus Field-->
 		<xsd:attribute name="bulkModulus" type="real64_array" />
 		<!--cohesion => New cohesion state-->
@@ -1201,6 +1203,8 @@
 		<xsd:attribute name="stress" type="real64_array3d" />
 	</xsd:complexType>
 	<xsd:complexType name="PoroElasticIsotropicType">
+		<!--BiotCoefficient => (no description available)-->
+		<xsd:attribute name="BiotCoefficient" type="real64_array" />
 		<!--bulkModulus => Elastic Bulk Modulus Field-->
 		<xsd:attribute name="bulkModulus" type="real64_array" />
 		<!--dPVMult_dDensity => (no description available)-->
@@ -1217,6 +1221,8 @@
 		<xsd:attribute name="stress" type="real64_array3d" />
 	</xsd:complexType>
 	<xsd:complexType name="PoroElasticTransverseIsotropicType">
+		<!--BiotCoefficient => (no description available)-->
+		<xsd:attribute name="BiotCoefficient" type="real64_array" />
 		<!--c11 => Elastic Bulk Modulus Field-->
 		<xsd:attribute name="c11" type="real64_array" />
 		<!--c13 => Elastic Bulk Modulus Field-->
@@ -1239,6 +1245,8 @@
 		<xsd:attribute name="stress" type="real64_array3d" />
 	</xsd:complexType>
 	<xsd:complexType name="PoroExtendedDruckerPragerType">
+		<!--BiotCoefficient => (no description available)-->
+		<xsd:attribute name="BiotCoefficient" type="real64_array" />
 		<!--bulkModulus => Elastic Bulk Modulus Field-->
 		<xsd:attribute name="bulkModulus" type="real64_array" />
 		<!--dPVMult_dDensity => (no description available)-->

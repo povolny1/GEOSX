@@ -42,6 +42,7 @@ SolidBase::SolidBase( string const & name, Group * const parent ):
     setDescription( "Previous Material Stress" );
 
   registerWrapper( viewKeyStruct::densityString(), &m_density ).
+    setPlotLevel( PlotLevel::LEVEL_0 ).
     setApplyDefaultValue( -1 ). // will be overwritten
     setDescription( "Material Density" );
 
@@ -57,8 +58,8 @@ SolidBase::~SolidBase()
 
 void SolidBase::postProcessInput()
 {
-  this->getWrapper< array2d< real64 > >( viewKeyStruct::densityString() ).
-    setApplyDefaultValue( m_defaultDensity );
+  //this->getWrapper< array2d< real64 > >( viewKeyStruct::densityString() ).
+  //  setApplyDefaultValue( m_defaultDensity );
 }
 
 

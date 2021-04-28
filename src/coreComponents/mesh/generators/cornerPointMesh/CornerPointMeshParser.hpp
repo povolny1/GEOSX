@@ -110,22 +110,10 @@ public:
                  CornerPointMeshDimensions const & dims );
 
   /**
-   * @brief Non-const getter for the local content of COORD
-   * @return the local content of COORD
-   */
-  array1d< real64 > & coord() { return m_coord; }
-
-  /**
    * @brief Const getter for the local content of COORD
    * @return the local content of COORD
    */
   array1d< real64 > const & coord() const { return m_coord; }
-
-  /**
-   * @brief Non-const getter for the local content of ZCORN
-   * @return the local content of ZCORN
-   */
-  array1d< real64 > & zcorn() { return m_zcorn; }
 
   /**
    * @brief Const getter for the local content of ZCORN
@@ -134,22 +122,10 @@ public:
   array1d< real64 > const & zcorn() const { return m_zcorn; }
 
   /**
-   * @brief Non-const getter for the local content of ACTNUM
-   * @return the local content of ACTNUM
-   */
-  array1d< localIndex > & actnum() { return m_actnum; }
-
-  /**
    * @brief Const getter for the local content of ACTNUM
    * @return the local content of ACTNUM
    */
   array1d< localIndex > const & actnum() const { return m_actnum; }
-
-  /**
-   * @brief Non-const getter for the local content of permeability
-   * @return the local content of permeability
-   */
-  array2d< real64 > & perm() { return m_perm; }
 
   /**
    * @brief Const getter for the local content of permeability
@@ -158,16 +134,40 @@ public:
   array2d< real64 > const & perm() const { return m_perm; }
 
   /**
-   * @brief Non-const getter for the local content of PORO
-   * @return the local content of PORO
-   */
-  array1d< real64 > & poro() { return m_poro; }
-
-  /**
    * @brief Const getter for the local content of PORO
    * @return the local content of PORO
    */
   array1d< real64 > const & poro() const { return m_poro; }
+
+  /**
+   * @brief Const getter for the local content of NTG
+   * @return the local content of NTG
+   */
+  array1d< real64 > const & netToGross() const { return m_netToGross; }
+
+  /**
+   * @brief Const getter for the local content of DENSITY
+   * @return the local content of DENSITY
+   */
+  array1d< real64 > const & solidDensity() const { return m_solidDensity; }
+
+  /**
+   * @brief Const getter for the local content of BIOT
+   * @return the local content of BIOT
+   */
+  array1d< real64 > const & biotCoefficient() const { return m_biotCoefficient; }
+
+  /**
+   * @brief Const getter for the local content of POISSON
+   * @return the local content of POISSON
+   */
+  array1d< real64 > const & poissonRatio() const { return m_poissonRatio; }
+
+  /**
+   * @brief Const getter for the local content of YOUNG
+   * @return the local content of YOUNG
+   */
+  array1d< real64 > const & youngsModulus() const { return m_youngsModulus; }
 
   /**
    * @brief Non-const getter for the local content of REGION
@@ -268,6 +268,21 @@ private:
 
   /// local content of the PORO keyword in the GRDECL file
   array1d< real64 > m_poro;
+
+  /// local content of the NTG keyword in the GRDECL file
+  array1d< real64 > m_netToGross;
+
+  /// local content of the DENSITY keyword in the GRDECL file
+  array1d< real64 > m_solidDensity;
+
+  /// local content of the BIOT keyword in the GRDECL file
+  array1d< real64 > m_biotCoefficient;
+
+  /// local content of the POISSON keyword in the GRDECL file
+  array1d< real64 > m_poissonRatio;
+
+  /// local content of the YOUNG keyword in the GRDECL file
+  array1d< real64 > m_youngsModulus;
 
   /// local content of the REGION keywork in the GRDECL file
   array1d< localIndex > m_regionId;

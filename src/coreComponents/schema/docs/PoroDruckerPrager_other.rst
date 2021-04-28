@@ -3,6 +3,7 @@
 ==================== ============== ========================== 
 Name                 Type           Description                
 ==================== ============== ========================== 
+BiotCoefficient      real64_array   (no description available) 
 bulkModulus          real64_array   Elastic Bulk Modulus Field 
 cohesion             real64_array2d New cohesion state         
 dPVMult_dDensity     real64_array2d (no description available) 

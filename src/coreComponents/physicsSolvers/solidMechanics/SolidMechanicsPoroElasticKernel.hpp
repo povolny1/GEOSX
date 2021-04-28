@@ -109,10 +109,10 @@ public:
                               localIndex const q,
                               StackVariables & stack ) const
   {
-    real64 const biotCoefficient = m_constitutiveUpdate.getBiotCoefficient();
+    arrayView1d< real64 const > const biotCoefficient = m_constitutiveUpdate.getBiotCoefficient();
     Base::quadraturePointKernel( k, q, stack, [=] GEOSX_HOST_DEVICE ( real64 (& stress)[6] )
     {
-      real64 const pressure = biotCoefficient * ( m_fluidPressure[k] + m_deltaFluidPressure[k] );
+      real64 const pressure = biotCoefficient[k] * ( m_fluidPressure[k] + m_deltaFluidPressure[k] );
       stress[0] -= pressure;
       stress[1] -= pressure;
       stress[2] -= pressure;

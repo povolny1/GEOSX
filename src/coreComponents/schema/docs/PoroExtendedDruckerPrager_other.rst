@@ -3,6 +3,7 @@
 ==================== ============== =================================== 
 Name                 Type           Description                         
 ==================== ============== =================================== 
+BiotCoefficient      real64_array   (no description available)          
 bulkModulus          real64_array   Elastic Bulk Modulus Field          
 dPVMult_dDensity     real64_array2d (no description available)          
 density              real64_array2d Material Density                    

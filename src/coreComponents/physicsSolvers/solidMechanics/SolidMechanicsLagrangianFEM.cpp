@@ -1015,24 +1015,24 @@ void SolidMechanicsLagrangianFEM::setupSystem( DomainPartition & domain,
 }
 
 void SolidMechanicsLagrangianFEM::assembleSystemInRegion( real64 const GEOSX_UNUSED_PARAM( time_n ),
-							  real64 const dt,
-							  DomainPartition & domain,
-							  DofManager const & dofManager,
-							  string const & regionName,
-							  string const & solidMaterialName,							  
-							  CRSMatrixView< real64, globalIndex const > const & localMatrix,
-							  arrayView1d< real64 > const & localRhs )
+                                                          real64 const dt,
+                                                          DomainPartition & domain,
+                                                          DofManager const & dofManager,
+                                                          string const & regionName,
+                                                          string const & solidMaterialName,
+                                                          CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                                                          arrayView1d< real64 > const & localRhs )
 {
   GEOSX_MARK_FUNCTION;
 
   GEOSX_UNUSED_VAR( dt );
   assemblyLaunch< constitutive::SolidBase,
-		  SolidMechanicsLagrangianFEMKernels::QuasiStatic >( domain,
-								     dofManager,
-								     regionName,
-								     solidMaterialName,
-								     localMatrix,
-								     localRhs );
+                  SolidMechanicsLagrangianFEMKernels::QuasiStatic >( domain,
+                                                                     dofManager,
+                                                                     regionName,
+                                                                     solidMaterialName,
+                                                                     localMatrix,
+                                                                     localRhs );
 
   if( getLogLevel() >= 2 )
   {

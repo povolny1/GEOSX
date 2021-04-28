@@ -120,15 +120,15 @@ public:
 
   void
   assembleSystemInRegion( real64 const time,
-			  real64 const dt,
-			  DomainPartition & domain,
-			  DofManager const & dofManager,
-			  string const & regionName,
-			  string const & solidMaterialName,			  
-			  CRSMatrixView< real64, globalIndex const > const & localMatrix,
-			  arrayView1d< real64 > const & localRhs );
-    
-  
+                          real64 const dt,
+                          DomainPartition & domain,
+                          DofManager const & dofManager,
+                          string const & regionName,
+                          string const & solidMaterialName,
+                          CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                          arrayView1d< real64 > const & localRhs );
+
+
   virtual void
   assembleSystem( real64 const time,
                   real64 const dt,
@@ -176,12 +176,12 @@ public:
             typename ... PARAMS >
   void assemblyLaunch( DomainPartition & domain,
                        DofManager const & dofManager,
-		       string const & regionName,
-		       string const & solidMaterialName,
+                       string const & regionName,
+                       string const & solidMaterialName,
                        CRSMatrixView< real64, globalIndex const > const & localMatrix,
                        arrayView1d< real64 > const & localRhs,
                        PARAMS && ... params );
-  
+
   template< typename CONSTITUTIVE_BASE,
             template< typename SUBREGION_TYPE,
                       typename CONSTITUTIVE_TYPE,
@@ -340,8 +340,8 @@ template< typename CONSTITUTIVE_BASE,
           typename ... PARAMS >
 void SolidMechanicsLagrangianFEM::assemblyLaunch( DomainPartition & domain,
                                                   DofManager const & dofManager,
-						  string const & regionName,
-						  string const & solidMaterialName,
+                                                  string const & regionName,
+                                                  string const & solidMaterialName,
                                                   CRSMatrixView< real64, globalIndex const > const & localMatrix,
                                                   arrayView1d< real64 > const & localRhs,
                                                   PARAMS && ... params )
@@ -360,7 +360,7 @@ void SolidMechanicsLagrangianFEM::assemblyLaunch( DomainPartition & domain,
   targetRegionName.emplace_back( regionName );
   array1d< string > targetSolidMaterialName;
   targetSolidMaterialName.emplace_back( solidMaterialName );
-  
+
   m_maxForce = finiteElement::
                  regionBasedKernelApplication< parallelDevicePolicy< 32 >,
                                                CONSTITUTIVE_BASE,

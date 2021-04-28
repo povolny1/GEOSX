@@ -114,7 +114,7 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
   // we can start constructing the mesh
 
   // Step 1: fill vertex information
- 
+
   arrayView2d< real64 const > vertexPositions = m_cpMeshBuilder->vertexPositions();
   arrayView1d< globalIndex const > vertexToGlobalVertex = m_cpMeshBuilder->vertexToGlobalVertex();
   localIndex const nVertices = vertexPositions.size( 0 );
@@ -127,8 +127,8 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
     vertexSets.registerWrapper< SortedArray< localIndex > >( string( "all" ) ).reference();
 
   array1d< localIndex > vertexIsUsed( vertexPositions.size( 0 ) );
-  vertexIsUsed.setValues< serialPolicy >( 0 );  
-  
+  vertexIsUsed.setValues< serialPolicy >( 0 );
+
   real64 xMin[3] = { std::numeric_limits< real64 >::max() };
   real64 xMax[3] = { std::numeric_limits< real64 >::min() };
 
@@ -190,7 +190,7 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
     {
       std::cout << "cellToVertex.size() = " << cellToVertex.size() << std::endl;
     }
-   
+
     for( localIndex iOwnedActiveCellInRegion = 0; iOwnedActiveCellInRegion < nOwnedActiveCellsInRegion; ++iOwnedActiveCellInRegion )
     {
       localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
@@ -213,31 +213,22 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
       std::set< localIndex > myVertices;
       for( localIndex ii = 0; ii < 8; ++ii )
       {
-	myVertices.insert( cellToVertex( iOwnedActiveCellInRegion, ii ) ); 
+        myVertices.insert( cellToVertex( iOwnedActiveCellInRegion, ii ) );
         vertexIsUsed( cellToVertex( iOwnedActiveCellInRegion, ii ) ) = 1;
       }
       if( myVertices.size() != 8 )
       {
-	std::cout << "++++++++==== found a degenerate element ====++++++++" << std::endl;
+        std::cout << "++++++++==== found a degenerate element ====++++++++" << std::endl;
       }
-      
+
       cellLocalToGlobal( iOwnedActiveCellInRegion ) = ownedActiveCellToGlobalCell( iOwnedActiveCellInRegion );
     }
 
-   
+
     // Step 3: fill property information
 
     // Step 3.a: fill porosity in active cells
     arrayView1d< real64 const > porosityField = m_cpMeshBuilder->porosityField();
-
-    if( regionId.sizeOfArray( er ) == 0 )
-    {
-      std::cout << "porosityField.size() = " << porosityField.size()
-		<< " porosityField.empty() = " << porosityField.empty() << std::endl;
-    }
-
-
-    
     if( !porosityField.empty() )
     {
       arrayView1d< real64 > referencePorosity = cellBlock->addProperty< array1d< real64 > >( "referencePorosity" ).toView();
@@ -264,10 +255,71 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
         for( localIndex dim = 0; dim < 3; dim++ )
         {
           permeability( iOwnedActiveCellInRegion, dim ) =
-            LvArray::math::max( 1e-19, m_toSquareMeter * permeabilityField( iCell, dim ) );
+            LvArray::math::max( 1e-15, m_toSquareMeter * permeabilityField( iCell, dim ) );
         }
       }
     }
+
+    arrayView1d< real64 const > netToGrossField = m_cpMeshBuilder->netToGrossField();
+    if( !netToGrossField.empty() )
+    {
+      arrayView1d< real64 > netToGross = cellBlock->addProperty< array1d< real64 > >( "netToGross" ).toView();
+      for( localIndex iOwnedActiveCellInRegion = 0; iOwnedActiveCellInRegion < nOwnedActiveCellsInRegion; ++iOwnedActiveCellInRegion )
+      {
+        localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
+        localIndex const iActiveCell = ownedActiveCellToActiveCell( iOwnedActiveCell );
+        localIndex const iCell = activeCellToCell( iActiveCell );
+        netToGross( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.053, netToGrossField( iCell ) );
+      }
+    }
+
+    arrayView1d< real64 const > solidDensityField = m_cpMeshBuilder->solidDensityField();
+    if( !solidDensityField.empty() )
+    {
+      arrayView1d< real64 > solidDensity = cellBlock->addProperty< array1d< real64 > >( "rock_density" ).toView();
+      for( localIndex iOwnedActiveCellInRegion = 0; iOwnedActiveCellInRegion < nOwnedActiveCellsInRegion; ++iOwnedActiveCellInRegion )
+      {
+        localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
+        localIndex const iActiveCell = ownedActiveCellToActiveCell( iOwnedActiveCell );
+        localIndex const iCell = activeCellToCell( iActiveCell );
+        solidDensity( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.0, solidDensityField( iCell ) );
+      }
+    }
+
+    arrayView1d< real64 const > biotCoefficientField = m_cpMeshBuilder->biotCoefficientField();
+    if( !biotCoefficientField.empty() )
+    {
+      arrayView1d< real64 > biotCoefficient = cellBlock->addProperty< array1d< real64 > >( "rock_BiotCoefficient" ).toView();
+      for( localIndex iOwnedActiveCellInRegion = 0; iOwnedActiveCellInRegion < nOwnedActiveCellsInRegion; ++iOwnedActiveCellInRegion )
+      {
+        localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
+        localIndex const iActiveCell = ownedActiveCellToActiveCell( iOwnedActiveCell );
+        localIndex const iCell = activeCellToCell( iActiveCell );
+        biotCoefficient( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.0, biotCoefficientField( iCell ) );
+      }
+    }
+
+    arrayView1d< real64 const > poissonRatioField = m_cpMeshBuilder->poissonRatioField();
+    arrayView1d< real64 const > youngsModulusField = m_cpMeshBuilder->youngsModulusField();
+    if( !poissonRatioField.empty() && !youngsModulusField.empty() )
+    {
+      arrayView1d< real64 > shearModulus = cellBlock->addProperty< array1d< real64 > >( "rock_shearModulus" ).toView();
+      arrayView1d< real64 > bulkModulus = cellBlock->addProperty< array1d< real64 > >( "rock_bulkModulus" ).toView();
+      for( localIndex iOwnedActiveCellInRegion = 0; iOwnedActiveCellInRegion < nOwnedActiveCellsInRegion; ++iOwnedActiveCellInRegion )
+      {
+        localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
+        localIndex const iActiveCell = ownedActiveCellToActiveCell( iOwnedActiveCell );
+        localIndex const iCell = activeCellToCell( iActiveCell );
+
+        real64 const bulkMod = 1e9 * youngsModulusField( iCell ) / (3 * ( 1 - 2*poissonRatioField( iCell ) ) );
+        real64 const shearMod = 1e9 * youngsModulusField( iCell ) / (2 * ( 1 + poissonRatioField( iCell ) ) );
+
+        bulkModulus( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.0, bulkMod );
+        shearModulus( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.0, shearMod );
+      }
+    }
+
+
   }
 
   for( localIndex iii = 0; iii < vertexIsUsed.size(); ++iii )
@@ -277,7 +329,7 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
       std::cout << "===We have a problem===" << std::endl;
     }
   }
-  
+
 }
 
 REGISTER_CATALOG_ENTRY( MeshGeneratorBase, CornerPointMeshGenerator, string const &, Group * const )

@@ -49,7 +49,7 @@ public:
    * @param baseParams Constructor parameters passed from base class
    */
   template< typename ... PARAMS >
-  PoroElasticUpdates( real64 const & inputBiotCoefficient,
+  PoroElasticUpdates( arrayView1d< real64 > const & inputBiotCoefficient,
                       PARAMS && ... baseParams ):
     UPDATE_BASE( std::forward< PARAMS >( baseParams )... ),
     m_biotCoefficient( inputBiotCoefficient )
@@ -68,13 +68,13 @@ public:
    * @return Biot coefficient
    */
   GEOSX_HOST_DEVICE
-  real64 getBiotCoefficient() const
+  arrayView1d< real64 const > const getBiotCoefficient() const
   {
     return m_biotCoefficient;
   }
 
 private:
-  real64 m_biotCoefficient; ///< Scalar Biot coefficient
+  arrayView1d< real64 const > const m_biotCoefficient; ///< Scalar Biot coefficient
 
 };
 
@@ -176,6 +176,7 @@ public:
   {
     static constexpr char const * compressibilityString() { return "compressibility"; }
     static constexpr char const * referencePressureString() { return "referencePressure"; }
+    static constexpr char const * inputBiotCoefficientString() { return "inputBiotCoefficient"; }
     static constexpr char const * biotCoefficientString() { return "BiotCoefficient"; }
   };
 
@@ -187,8 +188,11 @@ protected:
   /// reference pressure parameter
   real64 m_referencePressure;
 
-  /// scalar Biot's coefficient
-  real64 m_biotCoefficient;
+  /// Input Biot's coefficient
+  real64 m_inputBiotCoefficient;
+
+  /// Array of Biot's coefficients
+  array1d< real64 > m_biotCoefficient;
 
   /// Array of pore volume multipliers
   array2d< real64 > m_poreVolumeMultiplier;

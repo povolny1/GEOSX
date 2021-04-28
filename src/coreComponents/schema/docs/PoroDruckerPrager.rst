@@ -3,7 +3,6 @@
 ==================== ====== ======== =========================================== 
 Name                 Type   Default  Description                                 
 ==================== ====== ======== =========================================== 
-BiotCoefficient      real64 1        Biot's coefficient                          
 compressibility      real64 0        Pore volume compressibilty                  
 defaultBulkModulus   real64 -1       Elastic Bulk Modulus Parameter              
 defaultCohesion      real64 0        Initial cohesion                            
@@ -14,6 +13,7 @@ defaultHardeningRate real64 0        Cohesion hardening/softening rate
 defaultPoissonRatio  real64 -1       Poisson's ratio                             
 defaultShearModulus  real64 -1       Elastic Shear Modulus Parameter             
 defaultYoungsModulus real64 -1       Elastic Young's Modulus.                    
+inputBiotCoefficient real64 1        Biot's coefficient                          
 name                 string required A name is required for any non-unique nodes 
 referencePressure    real64 0        ReferencePressure                           
 ==================== ====== ======== =========================================== 

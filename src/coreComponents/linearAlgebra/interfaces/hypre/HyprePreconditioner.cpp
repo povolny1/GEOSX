@@ -1,9 +1,8 @@
-
 /*
  * ------------------------------------------------------------------------------------------------------------
  * SPDX-License-Identifier: LGPL-2.1-only
  *
- (c) 2018-2020 Lawrence Livermore National Security LLC
+   (c) 2018-2020 Lawrence Livermore National Security LLC
  * Copyright (c) 2018-2020 The Board of Trustees of the Leland Stanford Junior University
  * Copyright (c) 2018-2020 Total, S.A
  * Copyright (c) 2019-     GEOSX Contributors
@@ -401,6 +400,11 @@ void createMGR( LinearSolverParameters const & params,
       setStrategy< LagrangianContactMechanics >( params.mgr, numComponentsPerField, precond, mgrData );
       break;
     }
+    case LinearSolverParameters::MGR::StrategyType::singlePhaseWithWells:
+    {
+      setStrategy< SinglePhaseWithWells >( params.mgr, numComponentsPerField, precond, mgrData );
+      break;
+    }
     default:
     {
       GEOSX_ERROR( "Unsupported MGR strategy: " << params.mgr.strategy );
@@ -426,12 +430,19 @@ void createMGR( LinearSolverParameters const & params,
     HYPRE_BoomerAMGSetAggNumLevels( mgrData.mechSolver.ptr, 0 );
     HYPRE_BoomerAMGSetNumFunctions( mgrData.mechSolver.ptr, 3 );
 
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetPrintLevel( mgrData.mechSolver.ptr, 1 ) );
 
-    //HYPRE_BoomerAMGSetAggNumLevels( mgrData.mechSolver.ptr, 0 );    
-    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothType( mgrData.mechSolver.ptr, 5 ) );  
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( mgrData.mechSolver.ptr, 0 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( mgrData.mechSolver.ptr, 1e-3) ); 
-    
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothType( mgrData.mechSolver.ptr, 5 ) ); // ILU smoother
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothNumLevels( mgrData.mechSolver.ptr, 3 ) );  // applied on 3 levels
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothNumSweeps( mgrData.mechSolver.ptr, 2 ) );
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetILUType( mgrData.mechSolver.ptr, 0 ) ); // using ILU(k) type
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetILULevel( mgrData.mechSolver.ptr, 1 ) ); // with k = 1
+
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( mgrData.mechSolver.ptr, 1e-3 ) );
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxLevels( mgrData.mechSolver.ptr, 5 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetNumSweeps( mgrData.mechSolver.ptr, 10 ) );
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleType( mgrData.mechSolver.ptr, 2 ) );
+
     mgrData.mechSolver.setup = HYPRE_BoomerAMGSetup;
     mgrData.mechSolver.solve = HYPRE_BoomerAMGSolve;
     mgrData.mechSolver.destroy = HYPRE_BoomerAMGDestroy;
@@ -523,6 +534,8 @@ HypreMatrix const & HyprePreconditioner::setupPreconditioningMatrix( HypreMatrix
     mat.dofManager()->makeRestrictor( { { m_params.mgr.displacementFieldName, 0, 3 } }, mat.getComm(), true, Pu );
     mat.multiplyPtAP( Pu, Auu );
     LAIHelperFunctions::separateComponentFilter( Auu, m_precondMatrix, m_params.dofsPerNode );
+    //Auu.write("test_matrix.txt",LAIOutputFormat::NATIVE_ASCII);
+    //GEOSX_ERROR("stop here");
   }
   else if( m_params.preconditionerType == LinearSolverParameters::PreconditionerType::amg && m_params.amg.separateComponents )
   {

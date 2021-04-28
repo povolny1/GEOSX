@@ -78,18 +78,18 @@ struct CompareVertices
   bool operator()( const Vertex & v1, const Vertex & v2 ) const
   {
     if( !isZero( v1.m_x - v2.m_x ) &&
-	!isZero( v1.m_y - v2.m_y ) &&
-	!isZero( v1.m_z - v2.m_z ) )
+        !isZero( v1.m_y - v2.m_y ) &&
+        !isZero( v1.m_z - v2.m_z ) )
     {
       real64 const tol = 1e-6;
       if( ( fabs( v1.m_x - v2.m_x ) < tol ) &&
-	  ( fabs( v1.m_y - v2.m_y ) < tol ) &&
-	  ( fabs( v1.m_z - v2.m_z ) < tol ) )
+          ( fabs( v1.m_y - v2.m_y ) < tol ) &&
+          ( fabs( v1.m_z - v2.m_z ) < tol ) )
       {
-	std::cout << "======= should use a tolerance ======" << std::endl;
+        std::cout << "======= should use a tolerance ======" << std::endl;
       }
     }
-      
+
     if( !isZero( v1.m_x - v2.m_x ) )
     {
       return v1.m_x > v2.m_x;

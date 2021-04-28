@@ -33,7 +33,9 @@ using namespace constitutive;
 SinglePhaseReservoir::SinglePhaseReservoir( const string & name,
                                             Group * const parent ):
   ReservoirSolverBase( name, parent )
-{}
+{
+  m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::singlePhaseWithWells;
+}
 
 SinglePhaseReservoir::~SinglePhaseReservoir()
 {}

@@ -52,10 +52,12 @@ ElasticIsotropic::ElasticIsotropic( string const & name, Group * const parent ):
     setDescription( "Poisson's ratio" );
 
   registerWrapper( viewKeyStruct::bulkModulusString(), &m_bulkModulus ).
+    setPlotLevel( PlotLevel::LEVEL_0 ).
     setApplyDefaultValue( -1 ).
     setDescription( "Elastic Bulk Modulus Field" );
 
   registerWrapper( viewKeyStruct::shearModulusString(), &m_shearModulus ).
+    setPlotLevel( PlotLevel::LEVEL_0 ).
     setApplyDefaultValue( -1 ).
     setDescription( "Elastic Shear Modulus" );
 }
