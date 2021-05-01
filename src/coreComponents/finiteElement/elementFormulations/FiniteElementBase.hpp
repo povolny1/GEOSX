@@ -16,9 +16,9 @@
  * @file FiniteElementBase.hpp
  */
 
-#if defined(GEOSX_USE_CUDA)
+//#if defined(GEOSX_USE_CUDA)
 #define CALC_FEM_SHAPE_IN_KERNEL
-#endif
+//#endif
 
 
 
@@ -57,7 +57,9 @@ public:
     m_viewGradN( source.m_viewGradN ),
     m_viewDetJ( source.m_viewDetJ )
 #endif
-  {}
+  {
+    GEOSX_UNUSED_VAR( source );
+  }
 
   /// Default Move constructor
   FiniteElementBase( FiniteElementBase && ) = default;

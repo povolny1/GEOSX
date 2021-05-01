@@ -111,7 +111,7 @@ public:
                        DofManager const & dofManager,
                        arrayView1d< real64 const > const & localSolution,
                        real64 const scalingFactor ) override;
-  
+
   virtual void
   implicitStepComplete( real64 const & time_n,
                         real64 const & dt,
@@ -134,7 +134,7 @@ public:
                             DomainPartition & domain );
 
   string getFlowSolverName() const { return m_flowSolverName; }
-    
+
   enum class CouplingTypeOption : integer
   {
     FIM,

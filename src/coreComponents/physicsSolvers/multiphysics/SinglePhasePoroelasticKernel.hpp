@@ -194,7 +194,7 @@ public:
       for( int i=0; i<3; ++i )
       {
 #if defined(CALC_FEM_SHAPE_IN_KERNEL)
-        stack.xLocal[a][i] = m_X[localNodeIndex][i];
+        stack.xLocal[a][i] = m_X[localNodeIndex][i] - m_X[0][i];
 #endif
         stack.u_local[a][i] = m_disp[localNodeIndex][i];
         stack.uhat_local[a][i] = m_uhat[localNodeIndex][i];
@@ -233,7 +233,7 @@ public:
     FE_TYPE::symmetricGradient( dNdX, stack.uhat_local, strainIncrement );
     m_constitutiveUpdate.smallStrainUpdate( k, q, strainIncrement, totalStress, stiffness );
 
-    // --- Subtract pressure term
+    // --- Subtract pressure // // // // // // // term
     real64 const biotTimesPressure = m_biotCoefficient[k] * ( m_fluidPressure[k] + m_deltaFluidPressure[k] - 1e7 );
     totalStress[0] -= biotTimesPressure;
     totalStress[1] -= biotTimesPressure;
@@ -320,6 +320,7 @@ public:
     // --- Mass balance accumulation
     for( integer a = 0; a < numNodesPerElem; ++a )
     {
+      GEOSX_UNUSED_VAR( dPorosity_dVolStrainIncrement );
       stack.localFlowDispJacobian[0][a*3+0] += dPorosity_dVolStrainIncrement * m_fluidDensity( k, q ) * dNdX[a][0] * detJxW;
       stack.localFlowDispJacobian[0][a*3+1] += dPorosity_dVolStrainIncrement * m_fluidDensity( k, q ) * dNdX[a][1] * detJxW;
       stack.localFlowDispJacobian[0][a*3+2] += dPorosity_dVolStrainIncrement * m_fluidDensity( k, q ) * dNdX[a][2] * detJxW;

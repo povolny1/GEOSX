@@ -145,6 +145,7 @@ struct FluxKernel
    * @param[in] gravCoef The factor for gravity calculations (g*H)
    * @param[in] dens The material density in each element
    * @param[in] dDens_dPres The change in material density for each element
+   * @param[in] densOld The material density in each element at the previous time step (for stabilization)
    * @param[in] mob The fluid mobility in each element
    * @param[in] dMob_dPres The derivative of mobility wrt pressure in each element
    * @param[out] jacobian The linear system matrix
@@ -162,6 +163,7 @@ struct FluxKernel
             ElementViewConst< arrayView1d< real64 const > > const & gravCoef,
             ElementViewConst< arrayView2d< real64 const > > const & dens,
             ElementViewConst< arrayView2d< real64 const > > const & dDens_dPres,
+            ElementViewConst< arrayView1d< real64 const > > const & densOld,
             ElementViewConst< arrayView1d< real64 const > > const & mob,
             ElementViewConst< arrayView1d< real64 const > > const & dMob_dPres,
             ElementViewConst< arrayView1d< real64 const > > const & aperture0,
@@ -191,11 +193,13 @@ struct FluxKernel
            arraySlice1d< localIndex const > const & sesri,
            arraySlice1d< localIndex const > const & sei,
            arraySlice1d< real64 const > const & stencilWeights,
+           arraySlice1d< real64 const > const & stencilStabWeights,
            ElementViewConst< arrayView1d< real64 const > > const & pres,
            ElementViewConst< arrayView1d< real64 const > > const & dPres,
            ElementViewConst< arrayView1d< real64 const > > const & gravCoef,
            ElementViewConst< arrayView2d< real64 const > > const & dens,
            ElementViewConst< arrayView2d< real64 const > > const & dDens_dPres,
+           ElementViewConst< arrayView1d< real64 const > > const & densOld,
            ElementViewConst< arrayView1d< real64 const > > const & mob,
            ElementViewConst< arrayView1d< real64 const > > const & dMob_dPres,
            real64 const dt,
@@ -215,11 +219,13 @@ struct FluxKernel
            arraySlice1d< localIndex const > const &,
            arraySlice1d< localIndex const > const & sei,
            arraySlice1d< real64 const > const & stencilWeights,
+           arraySlice1d< real64 const > const & stencilStabWeights,
            arrayView1d< real64 const > const & pres,
            arrayView1d< real64 const > const & dPres,
            arrayView1d< real64 const > const & gravCoef,
            arrayView2d< real64 const > const & dens,
            arrayView2d< real64 const > const & dDens_dPres,
+           arrayView1d< real64 const > const & densOld,
            arrayView1d< real64 const > const & mob,
            arrayView1d< real64 const > const & dMob_dPres,
            real64 const dt,

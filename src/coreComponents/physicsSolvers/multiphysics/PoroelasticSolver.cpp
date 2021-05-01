@@ -360,21 +360,21 @@ void PoroelasticSolver::assembleSystem( real64 const time_n,
                                                                        localRhs,
                                                                        gravityVectorData,
                                                                        m_flowSolver->fluidModelNames() );
+  /*
+     if( m_solidSolver->targetRegionNames().size() > 1 )
+     {
+     string const regionName = m_solidSolver->targetRegionNames()[1];
+     string const solidMaterialName = m_solidSolver->solidMaterialNames()[1];
 
-  if( m_solidSolver->targetRegionNames().size() > 1 )
-  {    
-    string const regionName = m_solidSolver->targetRegionNames()[1];
-    string const solidMaterialName = m_solidSolver->solidMaterialNames()[1];
-
-    m_solidSolver->assembleSystemInRegion( time_n,
-					   dt,
-					   domain,
-					   dofManager,
-					   regionName,
-					   solidMaterialName,
-					   localMatrix,
-					   localRhs );
-  }
+     m_solidSolver->assembleSystemInRegion( time_n,
+             dt,
+             domain,
+             dofManager,
+             regionName,
+             solidMaterialName,
+             localMatrix,
+             localRhs );
+     }*/
 
   // Face-based contributions
   m_flowSolver->assembleFluxTerms( time_n, dt,
@@ -600,21 +600,21 @@ void PoroelasticSolver::applySystemSolution( DofManager const & dofManager,
 }
 
 bool PoroelasticSolver::checkSystemSolution( DomainPartition const & domain,
-                                               DofManager const & dofManager,
-                                               arrayView1d< real64 const > const & localSolution,
-                                               real64 const scalingFactor )
+                                             DofManager const & dofManager,
+                                             arrayView1d< real64 const > const & localSolution,
+                                             real64 const scalingFactor )
 {
-  bool const validSolidSolution = m_solidSolver->checkSystemSolution( domain, dofManager, localSolution, scalingFactor );  
+  bool const validSolidSolution = m_solidSolver->checkSystemSolution( domain, dofManager, localSolution, scalingFactor );
   bool const validFlowSolution  = m_flowSolver->checkSystemSolution( domain, dofManager, localSolution, -scalingFactor );
 
   return ( validSolidSolution && validFlowSolution );
 }
 
 real64 PoroelasticSolver::scalingForSystemSolution( DomainPartition const & domain,
-						    DofManager const & dofManager,
-						    arrayView1d< real64 const > const & localSolution )
+                                                    DofManager const & dofManager,
+                                                    arrayView1d< real64 const > const & localSolution )
 {
-  real64 const flowScalingFactor = m_flowSolver->scalingForSystemSolution( domain, dofManager, localSolution ); 
+  real64 const flowScalingFactor = m_flowSolver->scalingForSystemSolution( domain, dofManager, localSolution );
 
   return flowScalingFactor;
 }

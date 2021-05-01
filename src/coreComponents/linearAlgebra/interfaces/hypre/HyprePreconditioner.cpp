@@ -441,11 +441,11 @@ void createMGR( LinearSolverParameters const & params,
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothNumLevels( mgrData.mechSolver.ptr, 3 ) );  // applied on 3 levels
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetSmoothNumSweeps( mgrData.mechSolver.ptr, 2 ) );
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetILUType( mgrData.mechSolver.ptr, 0 ) ); // using ILU(k) type
-    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetILULevel( mgrData.mechSolver.ptr, 1 ) ); // with k = 1
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetILULevel( mgrData.mechSolver.ptr, 0 ) ); // with k = 1
 
-    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( mgrData.mechSolver.ptr, 1e-3 ) );
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( mgrData.mechSolver.ptr, 1e-2 ) );
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxLevels( mgrData.mechSolver.ptr, 5 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetNumSweeps( mgrData.mechSolver.ptr, 10 ) );
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetNumSweeps( mgrData.mechSolver.ptr, 10 ) );
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleType( mgrData.mechSolver.ptr, 2 ) );
 
     mgrData.mechSolver.setup = HYPRE_BoomerAMGSetup;

@@ -211,6 +211,7 @@ void SinglePhaseFVM< BASE >::assembleFluxTerms( real64 const GEOSX_UNUSED_PARAM(
                         m_gravCoef.toNestedViewConst(),
                         m_density.toNestedViewConst(),
                         m_dDens_dPres.toNestedViewConst(),
+                        m_densityOld.toNestedViewConst(),
                         m_mobility.toNestedViewConst(),
                         m_dMobility_dPres.toNestedViewConst(),
                         m_elementAperture0.toNestedViewConst(),

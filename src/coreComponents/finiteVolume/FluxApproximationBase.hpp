@@ -194,6 +194,7 @@ public:
 
     /// @return The key for fractureStencil
     static constexpr char const * fractureStencilString() { return "fractureStencil"; }
+
   };
 
   /**

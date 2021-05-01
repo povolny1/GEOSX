@@ -60,14 +60,14 @@ ReservoirSolverBase::~ReservoirSolverBase()
 void ReservoirSolverBase::postProcessInput()
 {
   std::cout << "beginning ReservoirSolverBase::postProcessInput()" << std::endl;
-  
+
   SolverBase::postProcessInput();
-  
+
   m_flowSolver = &this->getParent().getGroup< SolverBase >( m_flowSolverName );
   m_wellSolver = &this->getParent().getGroup< WellSolverBase >( m_wellSolverName );
 
   if( dynamicCast< CompositionalMultiphaseFVM const * >( m_flowSolver ) ||
-      dynamicCast< CompositionalMultiphaseHybridFVM const * >( m_flowSolver ) || 
+      dynamicCast< CompositionalMultiphaseHybridFVM const * >( m_flowSolver ) ||
       dynamicCast< SinglePhaseFVM< SinglePhaseBase > const * >( m_flowSolver ) ||
       dynamicCast< SinglePhaseHybridFVM const * >( m_flowSolver ) )
   {
@@ -86,14 +86,14 @@ void ReservoirSolverBase::postProcessInput()
   }
   else
   {
-    GEOSX_ERROR("We should not end up here"); 
+    GEOSX_ERROR( "We should not end up here" );
   }
-  std::cout << "end ReservoirSolverBase::postProcessInput()" << std::endl;  
+  std::cout << "end ReservoirSolverBase::postProcessInput()" << std::endl;
 }
 
 void ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()
 {
-  std::cout << "beginning ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()" << std::endl;    
+  std::cout << "beginning ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()" << std::endl;
   SolverBase::initializePostInitialConditionsPreSubGroups( );
 
   DomainPartition & domain = this->getGroupByPath< DomainPartition >( "/Problem/domain" );
@@ -115,7 +115,7 @@ void ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()
 
   // bind the stored reservoir views to the current domain
   resetViews( domain );
-  std::cout << "end ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()" << std::endl;      
+  std::cout << "end ReservoirSolverBase::initializePostInitialConditionsPreSubGroups()" << std::endl;
 }
 
 
@@ -146,18 +146,18 @@ real64 ReservoirSolverBase::solverStep( real64 const & time_n,
 void ReservoirSolverBase::setupDofs( DomainPartition const & domain,
                                      DofManager & dofManager ) const
 {
-  std::cout << "beginning ReservoirSolverBase::setupDofs()" << std::endl;        
+  std::cout << "beginning ReservoirSolverBase::setupDofs()" << std::endl;
   m_flowSolver->setupDofs( domain, dofManager ); // OK
   m_wellSolver->setupDofs( domain, dofManager );
   // TODO: add coupling when dofManager can support perforation connectors
-  std::cout << "end ReservoirSolverBase::setupDofs()" << std::endl;          
+  std::cout << "end ReservoirSolverBase::setupDofs()" << std::endl;
 }
 
 void ReservoirSolverBase::addCouplingNumNonzeros( DomainPartition & domain,
                                                   DofManager & dofManager,
                                                   arrayView1d< localIndex > const & rowLengths ) const
 {
-  std::cout << "begin ReservoirSolverBase::addCouplingNumNonZeros()" << std::endl;            
+  std::cout << "begin ReservoirSolverBase::addCouplingNumNonZeros()" << std::endl;
   localIndex const resNDOF = m_wellSolver->numDofPerResElement();
   localIndex const wellNDOF = m_wellSolver->numDofPerWellElement();
 
@@ -227,7 +227,7 @@ void ReservoirSolverBase::addCouplingNumNonzeros( DomainPartition & domain,
       }
     } );
   } );
-  std::cout << "end ReservoirSolverBase::addCouplingNumNonZeros()" << std::endl;              
+  std::cout << "end ReservoirSolverBase::addCouplingNumNonZeros()" << std::endl;
 }
 
 void ReservoirSolverBase::setupSystem( DomainPartition & domain,
@@ -237,7 +237,7 @@ void ReservoirSolverBase::setupSystem( DomainPartition & domain,
                                        array1d< real64 > & localSolution,
                                        bool const )
 {
-  std::cout << "begin ReservoirSolverBase::setupSystem()" << std::endl;              
+  std::cout << "begin ReservoirSolverBase::setupSystem()" << std::endl;
   GEOSX_MARK_FUNCTION;
 
   dofManager.setMesh( domain, 0, 0 );
@@ -281,7 +281,7 @@ void ReservoirSolverBase::setupSystem( DomainPartition & domain,
   localMatrix.setName( this->getName() + "/localMatrix" );
   localRhs.setName( this->getName() + "/localRhs" );
   localSolution.setName( this->getName() + "/localSolution" );
-  std::cout << "end ReservoirSolverBase::setupSystem()" << std::endl;                
+  std::cout << "end ReservoirSolverBase::setupSystem()" << std::endl;
 }
 
 
@@ -289,11 +289,11 @@ void ReservoirSolverBase::implicitStepSetup( real64 const & time_n,
                                              real64 const & dt,
                                              DomainPartition & domain )
 {
-  std::cout << "beginning ReservoirSolverBase::implicitStepSetup()" << std::endl;                  
+  std::cout << "beginning ReservoirSolverBase::implicitStepSetup()" << std::endl;
   // setup the individual solvers
   m_flowSolver->implicitStepSetup( time_n, dt, domain );
   m_wellSolver->implicitStepSetup( time_n, dt, domain );
-  std::cout << "end ReservoirSolverBase::implicitStepSetup()" << std::endl;                    
+  std::cout << "end ReservoirSolverBase::implicitStepSetup()" << std::endl;
 }
 
 

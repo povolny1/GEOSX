@@ -40,6 +40,7 @@ public:
     m_elementSubRegionIndices(),
     m_elementIndices(),
     m_weights(),
+    m_stabWeights(),
     m_connectorIndices()
   {}
 
@@ -82,6 +83,7 @@ public:
    * @param[in] elementSubRegionIndices The element sub-region indices for each point in the stencil entry
    * @param[in] elementIndices The element indices for each point in the stencil entry
    * @param[in] weights The weights each point in the stencil entry
+   * @param[in] stabWeights The weights used for stabilization purposes for each point in the stencil entry
    * @param[in] connectorIndex The index of the connector element that the stencil acts across
    */
   virtual void add( localIndex const numPts,
@@ -89,6 +91,7 @@ public:
                     localIndex const * const elementSubRegionIndices,
                     localIndex const * const elementIndices,
                     real64 const * const weights,
+                    real64 const * const stabWeights,
                     localIndex const connectorIndex ) = 0;
 
   /**
@@ -135,6 +138,12 @@ public:
    */
   typename LEAFCLASSTRAITS::WeightContainerViewConstType getWeights() const { return m_weights.toViewConst(); }
 
+  /**
+   * @brief Const access to the stencil weights used for stabilization.
+   * @return A view to const
+   */
+  typename LEAFCLASSTRAITS::WeightContainerViewConstType getStabilizationWeights() const { return m_stabWeights.toViewConst(); }
+
 protected:
   /// The container for the element region indices for each point in each stencil
   typename LEAFCLASSTRAITS::IndexContainerType m_elementRegionIndices;
@@ -147,6 +156,9 @@ protected:
 
   /// The container for the weights for each point in each stencil
   typename LEAFCLASSTRAITS::WeightContainerType m_weights;
+
+  /// The container for the weights used for stabilization for each point in each stencil
+  typename LEAFCLASSTRAITS::WeightContainerType m_stabWeights;
 
   /// The map that provides the stencil index given the index of the underlying connector object.
   map< localIndex, localIndex > m_connectorIndices;
@@ -162,6 +174,7 @@ void StencilBase< LEAFCLASSTRAITS, LEAFCLASS >::reserve( localIndex const size )
   m_elementSubRegionIndices.reserve( size * 2 );
   m_elementIndices.reserve( size * 2 );
   m_weights.reserve( size * 2 );
+  m_stabWeights.reserve( size * 2 );
 }
 
 
@@ -174,6 +187,7 @@ bool StencilBase< LEAFCLASSTRAITS, LEAFCLASS >::zero( localIndex const connector
     for( localIndex i = 0; i < static_cast< LEAFCLASS * >(this)->stencilSize( connectorIndex ); ++i )
     {
       m_weights[connectionListIndex][i] = 0;
+      m_stabWeights[connectionListIndex][i] = 0;
     }
   } );
 }
@@ -185,6 +199,7 @@ void StencilBase< LEAFCLASSTRAITS, LEAFCLASS >::setName( string const & name )
   m_elementSubRegionIndices.setName( name + "/elementSubRegionIndices" );
   m_elementIndices.setName( name + "/elementIndices" );
   m_weights.setName( name + "/weights" );
+  m_stabWeights.setName( name + "/stabWeights" );
 }
 
 template< typename LEAFCLASSTRAITS, typename LEAFCLASS >
@@ -194,6 +209,7 @@ void StencilBase< LEAFCLASSTRAITS, LEAFCLASS >::move( LvArray::MemorySpace const
   m_elementSubRegionIndices.move( space, true );
   m_elementIndices.move( space, true );
   m_weights.move( space, true );
+  m_stabWeights.move( space, true );
 }
 
 

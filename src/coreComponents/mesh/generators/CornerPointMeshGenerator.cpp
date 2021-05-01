@@ -237,7 +237,7 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
         localIndex const iOwnedActiveCell = ownedActiveCellsInRegion( iOwnedActiveCellInRegion );
         localIndex const iActiveCell = ownedActiveCellToActiveCell( iOwnedActiveCell );
         localIndex const iCell = activeCellToCell( iActiveCell );
-        referencePorosity( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.053, porosityField( iCell ) );
+        referencePorosity( iOwnedActiveCellInRegion ) = LvArray::math::max( 0.6, porosityField( iCell ) ); // historically, 0.053
       }
     }
 
@@ -255,7 +255,7 @@ void CornerPointMeshGenerator::generateMesh( DomainPartition & domain )
         for( localIndex dim = 0; dim < 3; dim++ )
         {
           permeability( iOwnedActiveCellInRegion, dim ) =
-            LvArray::math::max( 1e-15, m_toSquareMeter * permeabilityField( iCell, dim ) );
+            LvArray::math::max( 1e-13, m_toSquareMeter * permeabilityField( iCell, dim ) ); // historically, 1e-15;
         }
       }
     }

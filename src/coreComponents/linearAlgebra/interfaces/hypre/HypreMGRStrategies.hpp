@@ -183,18 +183,18 @@ public:
   explicit SinglePhasePoroelasticWithWells( arrayView1d< localIndex const > const & )
     : MGRStrategyBase( 6 )
   {
-    m_labels[0].push_back( 3 ); // reservoir pressure 
+    m_labels[0].push_back( 3 ); // reservoir pressure
     m_labels[0].push_back( 4 ); // well pressure
     m_labels[0].push_back( 5 ); // well rate
-    
+
     m_labels[1].push_back( 4 ); // well pressure
-    m_labels[1].push_back( 5 ); // well rate       
+    m_labels[1].push_back( 5 ); // well rate
     setupLabels();
 
     m_levelInterpType[0] = 2; // diagonal scaling (Jacobi)
-    m_levelInterpType[1] = 2; // diagonal scaling (Jacobi)    
+    m_levelInterpType[1] = 2; // diagonal scaling (Jacobi)
     m_levelCoarseGridMethod[0] = 1; // diagonal sparsification
-    m_levelCoarseGridMethod[1] = 0; 
+    m_levelCoarseGridMethod[1] = 0;
 
     m_levelFRelaxMethod[0] = 2; // AMG V-cycle
     m_levelFRelaxMethod[1] = 8; // AMG V-cycle
@@ -218,7 +218,7 @@ public:
 
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelFRelaxMethod( precond.ptr, m_levelFRelaxMethod ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( precond.ptr, 1 ));
-    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( precond.ptr, 1e-14 ));    
+    //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetTruncateCoarseGridThreshold( precond.ptr, 1e-14 ));
     //GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( precond.ptr, 3 ));
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( precond.ptr, m_levelInterpType ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( precond.ptr, m_levelCoarseGridMethod ) );
@@ -232,7 +232,7 @@ public:
   }
 };
 
-  
+
 /**
  * @brief SinglePhasePoroelastic strategy.
  */

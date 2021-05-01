@@ -31,11 +31,13 @@ FluxKernel::compute( localIndex const stencilSize,
                      arraySlice1d< localIndex const > const & sesri,
                      arraySlice1d< localIndex const > const & sei,
                      arraySlice1d< real64 const > const & stencilWeights,
+                     arraySlice1d< real64 const > const & stencilStabWeights,
                      ElementViewConst< arrayView1d< real64 const > > const & pres,
                      ElementViewConst< arrayView1d< real64 const > > const & dPres,
                      ElementViewConst< arrayView1d< real64 const > > const & gravCoef,
                      ElementViewConst< arrayView2d< real64 const > > const & dens,
                      ElementViewConst< arrayView2d< real64 const > > const & dDens_dPres,
+                     ElementViewConst< arrayView1d< real64 const > > const & densOld,
                      ElementViewConst< arrayView1d< real64 const > > const & mob,
                      ElementViewConst< arrayView1d< real64 const > > const & dMob_dPres,
                      real64 const dt,
@@ -45,20 +47,29 @@ FluxKernel::compute( localIndex const stencilSize,
   localIndex constexpr maxStencil = CellElementStencilTPFA::MAX_STENCIL_SIZE;
   stackArray1d< real64, maxStencil > dDensMean_dP( stencilSize );
   stackArray1d< real64, maxStencil > dFlux_dP( stencilSize );
+  stackArray1d< real64, maxStencil > dStabFlux_dP( stencilSize );
+
+  // TODO: we may want to move the assembly of the stabilization term to a separate function
 
   // average density
   real64 densMean = 0.0;
+  real64 densMeanOld = 0.0;
   for( localIndex ke = 0; ke < 2; ++ke )
   {
     densMean        += 0.5 * dens[seri[ke]][sesri[ke]][sei[ke]][0];
+    densMeanOld     += 0.5 * densOld[seri[ke]][sesri[ke]][sei[ke]];
     dDensMean_dP[ke] = 0.5 * dDens_dPres[seri[ke]][sesri[ke]][sei[ke]][0];
   }
 
   // compute potential difference
   real64 potDif = 0.0;
+  real64 stabPotDif = 0.0;
   real64 sumWeightGrav = 0.0;
   real64 potScale = 0.0;
 
+  // compute potential difference MPFA-style
+  // note that we assume that in the construction of the stab weights, only
+  // the entries corresponding to the (2) cells that are adjacent to the face are non-zeros
   for( localIndex ke = 0; ke < stencilSize; ++ke )
   {
     localIndex const er  = seri[ke];
@@ -66,11 +77,14 @@ FluxKernel::compute( localIndex const stencilSize,
     localIndex const ei  = sei[ke];
 
     real64 const weight = stencilWeights[ke];
+    real64 const stabWeight = stencilStabWeights[ke];
     real64 const pressure = pres[er][esr][ei] + dPres[er][esr][ei];
     real64 const gravD = gravCoef[er][esr][ei];
     real64 const pot = weight * ( pressure - densMean * gravD );
+    real64 const stabPot = stabWeight * pressure;
 
     potDif += pot;
+    stabPotDif += stabPot;
     sumWeightGrav += weight * gravD;
     potScale = fmax( potScale, fabs( pot ) );
   }
@@ -103,20 +117,26 @@ FluxKernel::compute( localIndex const stencilSize,
   }
 
   // compute the final flux and derivatives
-  real64 const fluxVal = mobility * potDif;
+  real64 const fluxVal = mobility * potDif; // physical flux
+  // note: this treatment of the old density does not match exactly Camargo et al. (2020), i.e., not upwinded
+  // TODO: see if the upwinding of the density in the stab term matters for compressible single-phase flow.
+  real64 const stabFluxVal = densMeanOld * stabPotDif; // artificial flux
   for( localIndex ke = 0; ke < stencilSize; ++ke )
   {
+    // physical flux
     dFlux_dP[ke] = mobility * ( stencilWeights[ke] - dDensMean_dP[ke] * sumWeightGrav) + dMobility_dP[ke] * potDif;
+    // artificial flux
+    dStabFlux_dP[ke] = densMeanOld * stencilStabWeights[ke];
   }
 
   // populate local flux vector and derivatives
-  flux[0] =  dt * fluxVal;
-  flux[1] = -dt * fluxVal;
+  flux[0] =  dt * fluxVal + stabFluxVal;
+  flux[1] = -flux[0];
 
   for( localIndex ke = 0; ke < stencilSize; ++ke )
   {
-    fluxJacobian[0][ke] =  dt * dFlux_dP[ke];
-    fluxJacobian[1][ke] = -dt * dFlux_dP[ke];
+    fluxJacobian[0][ke] = dt * dFlux_dP[ke] + dStabFlux_dP[ke];
+    fluxJacobian[1][ke] = -fluxJacobian[0][ke];
   }
 }
 
@@ -127,11 +147,13 @@ FluxKernel::compute( localIndex const stencilSize,
                      arraySlice1d< localIndex const > const &,
                      arraySlice1d< localIndex const > const & sei,
                      arraySlice1d< real64 const > const & stencilWeights,
+                     arraySlice1d< real64 const > const & stencilStabWeights,
                      arrayView1d< real64 const > const & pres,
                      arrayView1d< real64 const > const & dPres,
                      arrayView1d< real64 const > const & gravCoef,
                      arrayView2d< real64 const > const & dens,
                      arrayView2d< real64 const > const & dDens_dPres,
+                     arrayView1d< real64 const > const & densOld,
                      arrayView1d< real64 const > const & mob,
                      arrayView1d< real64 const > const & dMob_dPres,
                      real64 const dt,
@@ -142,17 +164,21 @@ FluxKernel::compute( localIndex const stencilSize,
 
   stackArray1d< real64, maxStencil > dDensMean_dP( stencilSize );
   stackArray1d< real64, maxStencil > dFlux_dP( stencilSize );
+  stackArray1d< real64, maxStencil > dStabFlux_dP( stencilSize );
 
   // average density
   real64 densMean = 0.0;
+  real64 densMeanOld = 0.0;
   for( localIndex i = 0; i < 2; ++i )
   {
     densMean += 0.5 * dens[sei[i]][0];
+    densMeanOld += 0.5 * densOld[sei[i]];
     dDensMean_dP[i] = 0.5 * dDens_dPres[sei[i]][0];
   }
 
   // compute potential difference MPFA-style
   real64 potDif = 0.0;
+  real64 stabPotDif = 0.0;
   real64 sumWeightGrav = 0.0;
   real64 potScale = 0.0;
   for( localIndex ke = 0; ke < stencilSize; ++ke )
@@ -160,11 +186,14 @@ FluxKernel::compute( localIndex const stencilSize,
     localIndex const ei = sei[ke];
 
     real64 const weight = stencilWeights[ke];
+    real64 const stabWeight = stencilStabWeights[ke];
     real64 const pressure = pres[ei] + dPres[ei];
     real64 const gravD = gravCoef[ei];
     real64 const pot = weight * ( pressure - densMean * gravD );
+    real64 const stabPot = stabWeight * pressure;
 
     potDif += pot;
+    stabPotDif += stabPot;
     sumWeightGrav += weight * gravD;
     potScale = fmax( potScale, fabs( pot ) );
   }
@@ -197,19 +226,21 @@ FluxKernel::compute( localIndex const stencilSize,
   }
 
   // compute the final flux and derivatives
-  real64 const fluxVal = mobility * potDif;
+  real64 const fluxVal = mobility * potDif; // physical flux
+  real64 const stabFluxVal = densMeanOld * stabPotDif; // artificial flux
   for( localIndex ke = 0; ke < stencilSize; ++ke )
   {
     dFlux_dP[ke] = mobility * ( stencilWeights[ke] - dDensMean_dP[ke] * sumWeightGrav) + dMobility_dP[ke] * potDif;
+    dStabFlux_dP[ke] = densMeanOld * stencilWeights[ke];
   }
 
   // populate local flux vector and derivatives
-  flux[0] = dt * fluxVal;
+  flux[0] = dt * fluxVal + stabFluxVal;
   flux[1] = -flux[0];
 
   for( localIndex ke = 0; ke < stencilSize; ++ke )
   {
-    fluxJacobian[0][ke] = dt * dFlux_dP[ke];
+    fluxJacobian[0][ke] = dt * dFlux_dP[ke] + dStabFlux_dP[ke];
     fluxJacobian[1][ke] = -fluxJacobian[0][ke];
   }
 }
@@ -369,6 +400,7 @@ void FluxKernel::
                                     ElementViewConst< arrayView1d< real64 const > > const & gravCoef,
                                     ElementViewConst< arrayView2d< real64 const > > const & dens,
                                     ElementViewConst< arrayView2d< real64 const > > const & dDens_dPres,
+                                    ElementViewConst< arrayView1d< real64 const > > const & densOld,
                                     ElementViewConst< arrayView1d< real64 const > > const & mob,
                                     ElementViewConst< arrayView1d< real64 const > > const & dMob_dPres,
                                     ElementViewConst< arrayView1d< real64 const > > const & GEOSX_UNUSED_PARAM( aperture0 ),
@@ -393,6 +425,7 @@ void FluxKernel::
   typename CellElementStencilTPFA::IndexContainerViewConstType const & sesri = stencil.getElementSubRegionIndices();
   typename CellElementStencilTPFA::IndexContainerViewConstType const & sei = stencil.getElementIndices();
   typename CellElementStencilTPFA::WeightContainerViewConstType const & weights = stencil.getWeights();
+  typename CellElementStencilTPFA::WeightContainerViewConstType const & stabWeights = stencil.getStabilizationWeights();
 
   forAll< parallelDevicePolicy<> >( stencil.size(), [=] GEOSX_HOST_DEVICE ( localIndex const iconn )
   {
@@ -406,11 +439,13 @@ void FluxKernel::
              sesri[iconn],
              sei[iconn],
              weights[iconn],
+             stabWeights[iconn],
              pres,
              dPres,
              gravCoef,
              dens,
              dDens_dPres,
+             densOld,
              mob,
              dMob_dPres,
              dt,
@@ -454,6 +489,7 @@ void FluxKernel::
                                 ElementViewConst< arrayView1d< real64 const > > const & gravCoef,
                                 ElementViewConst< arrayView2d< real64 const > > const & dens,
                                 ElementViewConst< arrayView2d< real64 const > > const & dDens_dPres,
+                                ElementViewConst< arrayView1d< real64 const > > const & densOld,
                                 ElementViewConst< arrayView1d< real64 const > > const & mob,
                                 ElementViewConst< arrayView1d< real64 const > > const & dMob_dPres,
                                 ElementViewConst< arrayView1d< real64 const > > const & aperture0,
@@ -469,6 +505,8 @@ void FluxKernel::
                                 arrayView1d< real64 > const & localRhs,
                                 CRSMatrixView< real64, localIndex const > const & dR_dAper )
 {
+  GEOSX_UNUSED_VAR( densOld );
+
   constexpr localIndex maxNumFluxElems = FaceElementStencil::NUM_POINT_IN_FLUX;
   constexpr localIndex maxStencilSize = FaceElementStencil::MAX_STENCIL_SIZE;
 

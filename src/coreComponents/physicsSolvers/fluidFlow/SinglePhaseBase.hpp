@@ -297,6 +297,7 @@ protected:
 
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_density;
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_dDens_dPres;
+  ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > m_densityOld;
 
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_viscosity;
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_dVisc_dPres;

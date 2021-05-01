@@ -288,8 +288,8 @@ ENUM_STRINGS( LinearSolverParameters::MGR::StrategyType,
               "singlePhasePoroelastic",
               "hybridSinglePhasePoroelastic",
               "singlePhaseWithWells",
-	      "singlePhasePoroelasticWithWells",
-	      "multiphasePoroelasticWithWells" )
+              "singlePhasePoroelasticWithWells",
+              "multiphasePoroelasticWithWells" )
 
 ENUM_STRINGS( LinearSolverParameters::AMG::CycleType,
               "V",

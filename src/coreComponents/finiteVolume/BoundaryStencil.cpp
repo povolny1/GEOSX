@@ -31,6 +31,7 @@ void BoundaryStencil::add( localIndex const numPts,
                            localIndex const * const elementSubRegionIndices,
                            localIndex const * const elementIndices,
                            real64 const * const weights,
+                           real64 const * const stabWeights,
                            localIndex const connectorIndex )
 {
   GEOSX_ERROR_IF_NE_MSG( numPts, 2, "Number of points in boundary stencil should be 2" );
@@ -41,6 +42,7 @@ void BoundaryStencil::add( localIndex const numPts,
   m_elementSubRegionIndices.resize( newSize, numPts );
   m_elementIndices.resize( newSize, numPts );
   m_weights.resize( newSize, numPts );
+  m_stabWeights.resize( newSize, numPts );
 
   for( localIndex a = 0; a < numPts; ++a )
   {
@@ -48,6 +50,7 @@ void BoundaryStencil::add( localIndex const numPts,
     m_elementSubRegionIndices( oldSize, a ) = elementSubRegionIndices[a];
     m_elementIndices( oldSize, a ) = elementIndices[a];
     m_weights( oldSize, a ) = weights[a];
+    m_stabWeights( oldSize, a ) = stabWeights[a];
   }
   m_connectorIndices[connectorIndex] = oldSize;
 }

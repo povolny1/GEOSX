@@ -35,8 +35,7 @@ using namespace constitutive;
 SinglePhaseReservoir::SinglePhaseReservoir( const string & name,
                                             Group * const parent ):
   ReservoirSolverBase( name, parent )
-{
-}
+{}
 
 SinglePhaseReservoir::~SinglePhaseReservoir()
 {}
@@ -44,28 +43,28 @@ SinglePhaseReservoir::~SinglePhaseReservoir()
 void SinglePhaseReservoir::postProcessInput()
 {
   ReservoirSolverBase::postProcessInput();
-  
+
   if( dynamicCast< SinglePhaseFVM< SinglePhaseBase > const * >( m_flowSolver ) )
   {
     m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::singlePhaseWithWells;
   }
   else if( dynamicCast< SinglePhaseHybridFVM const * >( m_flowSolver ) )
   {
-    GEOSX_ERROR("Already supported, but not in this branch");  
+    GEOSX_ERROR( "Already supported, but not in this branch" );
   }
   else if( dynamicCast< PoroelasticSolver const * >( m_flowSolver ) )
   {
-    m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::singlePhasePoroelasticWithWells;    
+    m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::singlePhasePoroelasticWithWells;
   }
   else
   {
-    GEOSX_ERROR("Solver not found"); 
+    GEOSX_ERROR( "Solver not found" );
   }
   m_linearSolverParameters.get().mgr.separateComponents = true;
   m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
   m_linearSolverParameters.get().dofsPerNode = 3;
 }
-  
+
 void SinglePhaseReservoir::setupSystem( DomainPartition & domain,
                                         DofManager & dofManager,
                                         CRSMatrix< real64, globalIndex > & localMatrix,

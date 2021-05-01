@@ -36,6 +36,7 @@ void FaceElementStencil::add( localIndex const numPts,
                               localIndex const * const elementSubRegionIndices,
                               localIndex const * const elementIndices,
                               real64 const * const weights,
+                              real64 const * const stabWeights,
                               localIndex const connectorIndex )
 {
   GEOSX_ERROR_IF( numPts >= MAX_STENCIL_SIZE, "Maximum stencil size exceeded" );
@@ -47,6 +48,7 @@ void FaceElementStencil::add( localIndex const numPts,
     m_elementSubRegionIndices.appendArray( elementSubRegionIndices, elementSubRegionIndices + numPts );
     m_elementIndices.appendArray( elementIndices, elementIndices + numPts );
     m_weights.appendArray( weights, weights + numPts );
+    m_stabWeights.appendArray( stabWeights, stabWeights + numPts );
 
     m_connectorIndices[connectorIndex] = m_weights.size() - 1;
   }
@@ -57,11 +59,13 @@ void FaceElementStencil::add( localIndex const numPts,
     m_elementSubRegionIndices.clearArray( stencilIndex );
     m_elementIndices.clearArray( stencilIndex );
     m_weights.clearArray( stencilIndex );
+    m_stabWeights.clearArray( stencilIndex );
 
     m_elementRegionIndices.appendToArray( stencilIndex, elementRegionIndices, elementRegionIndices + numPts );
     m_elementSubRegionIndices.appendToArray( stencilIndex, elementSubRegionIndices, elementSubRegionIndices + numPts );
     m_elementIndices.appendToArray( stencilIndex, elementIndices, elementIndices + numPts );
     m_weights.appendToArray( stencilIndex, weights, weights + numPts );
+    m_stabWeights.appendToArray( stencilIndex, stabWeights, stabWeights + numPts );
   }
 }
 
