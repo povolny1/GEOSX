@@ -789,6 +789,10 @@ void SinglePhaseBase::resetViewsPrivate( ElementRegionManager const & elemManage
                                                                            fluidModelNames() );
   m_density.setName( getName() + "/accessors/" + SingleFluidBase::viewKeyStruct::densityString() );
 
+  m_densityOld.clear();
+  m_densityOld = elemManager.constructArrayViewAccessor< real64, 1 >( viewKeyStruct::densityOldString() );
+  m_densityOld.setName( getName() + "/accessors/" + viewKeyStruct::densityOldString() );
+
   m_dDens_dPres.clear();
   m_dDens_dPres = elemManager.constructMaterialArrayViewAccessor< real64, 2 >( SingleFluidBase::viewKeyStruct::dDens_dPresString(),
                                                                                targetRegionNames(),

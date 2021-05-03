@@ -808,6 +808,8 @@ the relative residual norm satisfies:
 		<xsd:attribute name="coefficientName" type="string" use="required" />
 		<!--fieldName => Name of primary solution field-->
 		<xsd:attribute name="fieldName" type="string" use="required" />
+		<!--mechanicalStabCoefficient => Value of the (currently uniform) stabilization coefficient-->
+		<xsd:attribute name="mechanicalStabCoefficient" type="real64" default="0" />
 		<!--targetRegions => List of regions to build the stencil for-->
 		<xsd:attribute name="targetRegions" type="string_array" default="{}" />
 		<!--name => A name is required for any non-unique nodes-->

@@ -26,6 +26,7 @@ using namespace geosx::SinglePhaseFVMKernels;
 
 template< localIndex stencilSize >
 void computeFlux( arraySlice1d< real64 const > const & weight,
+                  arraySlice1d< real64 const > const & stabWeight,
                   real64 const * pres,
                   real64 const * dPres,
                   real64 const * gravCoef,
@@ -33,6 +34,7 @@ void computeFlux( arraySlice1d< real64 const > const & weight,
                   real64 const * dMob_dPres,
                   real64 const * dens,
                   real64 const * dDens_dPres,
+                  real64 const * densOld,
                   real64 const dt,
                   real64 & flux,
                   real64 (& dFlux_dP)[stencilSize] )
@@ -40,24 +42,29 @@ void computeFlux( arraySlice1d< real64 const > const & weight,
   localIndex constexpr numElems = 2;
 
   real64 densMean = 0.0;
+  real64 densMeanOld = 0.0;
   real64 dDensMean_dP[stencilSize] {};
   for( localIndex i = 0; i < numElems; ++i )
   {
     densMean += 0.5 * dens[i];
+    densMeanOld += 0.5 * densOld[i];
     dDensMean_dP[i] = 0.5 * dDens_dPres[i];
   }
   real64 potDif = 0.0;
+  real64 stabPotDif = 0.0;
   real64 sumWeightGrav = 0;
   for( localIndex i = 0; i < stencilSize; ++i )
   {
     potDif += weight[i] * (pres[i] + dPres[i] - densMean * gravCoef[i]);
+    stabPotDif += stabWeight[i] * (pres[i] + dPres[i]);
     sumWeightGrav += weight[i] * gravCoef[i];
   }
   localIndex const k_up = (potDif >= 0) ? 0 : 1;
-  flux = dt * potDif * mob[k_up];
+  flux = dt * potDif * mob[k_up] + stabPotDif * densMeanOld;
   for( localIndex i = 0; i < stencilSize; ++i )
   {
     dFlux_dP[i] = dt * ( weight[i] - sumWeightGrav * dDensMean_dP[i] ) * mob[k_up];
+    dFlux_dP[i] += stabWeight[i] * densMeanOld;
   }
   dFlux_dP[k_up] += dt * potDif * dMob_dPres[k_up];
 }
@@ -71,6 +78,7 @@ void testFluxKernel( CellElementStencilTPFA const & stencil,
                      real64 const * dMob_dPres,
                      real64 const * dens,
                      real64 const * dDens_dPres,
+                     real64 const * densOld,
                      real64 const dt )
 {
   localIndex constexpr numElems = CellElementStencilTPFA::NUM_POINT_IN_FLUX;
@@ -79,6 +87,7 @@ void testFluxKernel( CellElementStencilTPFA const & stencil,
   typename CellElementStencilTPFA::IndexContainerViewConstType const & sesri = stencil.getElementSubRegionIndices();
   typename CellElementStencilTPFA::IndexContainerViewConstType const & sei = stencil.getElementIndices();
   typename CellElementStencilTPFA::WeightContainerViewConstType const & weights = stencil.getWeights();
+  typename CellElementStencilTPFA::WeightContainerViewConstType const & stabWeights = stencil.getStabilizationWeights();
 
   auto presView        = AccessorHelper< FULL >::template makeElementAccessor< 1 >( pres,
                                                                                     stencilSize,
@@ -117,6 +126,11 @@ void testFluxKernel( CellElementStencilTPFA const & stencil,
                                                                                     sesri[0],
                                                                                     sei[0],
                                                                                     1 );
+  auto densOldView     = AccessorHelper< FULL >::template makeElementAccessor< 1 >( densOld,
+                                                                                    stencilSize,
+                                                                                    seri[0],
+                                                                                    sesri[0],
+                                                                                    sei[0] );
 
   array1d< real64 > flux( numElems );
   array2d< real64 > fluxJacobian( numElems, stencilSize );
@@ -128,11 +142,13 @@ void testFluxKernel( CellElementStencilTPFA const & stencil,
                        sesri[0],
                        sei[0],
                        weights[0],
+                       stabWeights[0],
                        presView.toNestedViewConst(),
                        dPresView.toNestedViewConst(),
                        gravCoefView.toNestedViewConst(),
                        densView.toNestedViewConst(),
                        dDens_dPresView.toNestedViewConst(),
+                       densOldView.toNestedViewConst(),
                        mobView.toNestedViewConst(),
                        dMob_dPresView.toNestedViewConst(),
                        dt,
@@ -144,6 +160,7 @@ void testFluxKernel( CellElementStencilTPFA const & stencil,
 
   // compute etalon
   computeFlux( weights[0],
+               stabWeights[0],
                pres,
                dPres,
                gravCoef,
@@ -151,6 +168,7 @@ void testFluxKernel( CellElementStencilTPFA const & stencil,
                dMob_dPres,
                dens,
                dDens_dPres,
+               densOld,
                dt,
                flux_et,
                dFlux_dP_et );
@@ -175,11 +193,13 @@ TEST( SinglePhaseFVMKernels, fluxFull )
   localIndex elemSubReg[2] = {0, 0};
   localIndex elemIndex[2] = {1, 0};
   real64 weight[] = { 1e-12, -1e-12 };
+  real64 stabWeight[] = { 1e-16, -1e-16 };
   stencil.add( stencilSize,
                elemReg,
                elemSubReg,
                elemIndex,
                weight,
+               stabWeight,
                0 );
 
 
@@ -206,6 +226,9 @@ TEST( SinglePhaseFVMKernels, fluxFull )
   };
   real64 const dDens_dPresData[NTEST][stencilSize] = {
     { 1e-6, 2e-6 }, { 2e-6, 3e-6 }, { 2e-6, 2e-6 }
+  };
+  real64 const densOldData[NTEST][stencilSize] = {
+    { 2e+3, 2e+3 }, { 2e+3, 1e+3 }, { 2e+3, 1e+3 }
   };
   real64 const dt[NTEST] = { 1.0, 1e+5, 1e+8 };
 
@@ -222,6 +245,7 @@ TEST( SinglePhaseFVMKernels, fluxFull )
                                dMob_dPresData[i],
                                densData[i],
                                dDens_dPresData[i],
+                               densOldData[i],
                                dt[i] );
 
   }
@@ -236,11 +260,13 @@ TEST( SinglePhaseFVMKernels, fluxRegion )
   localIndex elemSubReg[2] = {0, 0};
   localIndex elemIndex[2] = {1, 0};
   real64 weight[] = { 1e-12, -1e-12 };
+  real64 stabWeight[] = { 0, 0 };
   stencil.add( stencilSize,
                elemReg,
                elemSubReg,
                elemIndex,
                weight,
+               stabWeight,
                0 );
 
   int constexpr NTEST = 3;
@@ -267,6 +293,9 @@ TEST( SinglePhaseFVMKernels, fluxRegion )
   real64 const dDens_dPresData[NTEST][stencilSize] = {
     { 1e-6, 2e-6 }, { 2e-6, 3e-6 }, { 2e-6, 2e-6 }
   };
+  real64 const densOldData[NTEST][stencilSize] = {
+    { 0, 0 }, { 0, 0 }, { 0, 0 }
+  };
   real64 const dt[NTEST] = { 1.0, 1e+5, 1e+8 };
 
 
@@ -282,6 +311,7 @@ TEST( SinglePhaseFVMKernels, fluxRegion )
                                 dMob_dPresData[i],
                                 densData[i],
                                 dDens_dPresData[i],
+                                densOldData[i],
                                 dt[i] );
 
   }

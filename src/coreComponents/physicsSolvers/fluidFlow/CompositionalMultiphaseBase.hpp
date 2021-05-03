@@ -423,6 +423,7 @@ protected:
 
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_dPhaseVolFrac_dPres;
   ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_dPhaseVolFrac_dCompDens;
+  ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_phaseVolFracOld;
 
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_phaseMob;
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_dPhaseMob_dPres;
@@ -431,6 +432,7 @@ protected:
   ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_phaseDens;
   ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_dPhaseDens_dPres;
   ElementRegionManager::ElementViewAccessor< arrayView4d< real64 const > > m_dPhaseDens_dComp;
+  ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > m_phaseDensOld;
 
   ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_phaseMassDens;
   ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_dPhaseMassDens_dPres;
@@ -439,6 +441,7 @@ protected:
   ElementRegionManager::ElementViewAccessor< arrayView4d< real64 const > > m_phaseCompFrac;
   ElementRegionManager::ElementViewAccessor< arrayView4d< real64 const > > m_dPhaseCompFrac_dPres;
   ElementRegionManager::ElementViewAccessor< arrayView5d< real64 const > > m_dPhaseCompFrac_dComp;
+  ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_phaseCompFracOld;
 
   ElementRegionManager::ElementViewAccessor< arrayView3d< real64 const > > m_phaseCapPressure;
   ElementRegionManager::ElementViewAccessor< arrayView4d< real64 const > > m_dPhaseCapPressure_dPhaseVolFrac;

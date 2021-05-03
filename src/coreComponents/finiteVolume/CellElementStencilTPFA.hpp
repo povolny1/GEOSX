@@ -77,6 +77,7 @@ public:
                     localIndex const * const elementSubRegionIndices,
                     localIndex const * const elementIndices,
                     real64 const * const weights,
+                    real64 const * const stencilWeights,
                     localIndex const connectorIndex ) override final;
 
   /**

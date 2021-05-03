@@ -186,6 +186,9 @@ public:
     /// @return The key for transMultiplier
     static constexpr char const * transMultiplierString() { return "TransMultiplier"; }
 
+    /// The key for mechanical stabilization coefficient
+    static constexpr char const * mechanicalStabCoefString() { return "mechanicalStabCoefficient"; }
+
 
     // Keys below are for wrappers registered on MeshLevel, not the current object
 
@@ -263,6 +266,9 @@ protected:
 
   /// name of the coefficient field
   string m_coeffName;
+
+  /// coefficient used for stabilization
+  real64 m_mechanicalStabCoef;
 
   /// names of target regions to build the stencil for
   string_array m_targetRegions;

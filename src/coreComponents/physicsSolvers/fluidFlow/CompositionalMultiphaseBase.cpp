@@ -1137,6 +1137,10 @@ void CompositionalMultiphaseBase::resetViews( MeshLevel & mesh )
   m_dPhaseVolFrac_dCompDens = elemManager.constructArrayViewAccessor< real64, 3 >( viewKeyStruct::dPhaseVolumeFraction_dGlobalCompDensityString() );
   m_dPhaseVolFrac_dCompDens.setName( getName() + "/accessors/" + viewKeyStruct::dPhaseVolumeFraction_dGlobalCompDensityString() );
 
+  m_phaseVolFracOld.clear();
+  m_phaseVolFracOld = elemManager.constructArrayViewAccessor< real64, 2 >( viewKeyStruct::phaseVolumeFractionOldString() );
+  m_phaseVolFracOld.setName( getName() + "/accessors/" + viewKeyStruct::phaseVolumeFractionOldString() );
+
   m_phaseMob.clear();
   m_phaseMob = elemManager.constructArrayViewAccessor< real64, 2 >( viewKeyStruct::phaseMobilityString() );
   m_phaseMob.setName( getName() + "/accessors/" + viewKeyStruct::phaseMobilityString() );
@@ -1156,6 +1160,14 @@ void CompositionalMultiphaseBase::resetViews( MeshLevel & mesh )
   m_totalDensOld.clear();
   m_totalDensOld = elemManager.constructArrayViewAccessor< real64, 1 >( viewKeyStruct::totalDensityOldString() );
   m_totalDensOld.setName( getName() + "/accessors/" + viewKeyStruct::totalDensityOldString() );
+
+  m_phaseDensOld.clear();
+  m_phaseDensOld = elemManager.constructArrayViewAccessor< real64, 2 >( viewKeyStruct::phaseDensityOldString() );
+  m_phaseDensOld.setName( getName() + "/accessors/" + viewKeyStruct::phaseDensityOldString() );
+
+  m_phaseCompFracOld.clear();
+  m_phaseCompFracOld = elemManager.constructArrayViewAccessor< real64, 3 >( viewKeyStruct::phaseComponentFractionOldString() );
+  m_phaseCompFracOld.setName( getName() + "/accessors/" + viewKeyStruct::phaseComponentFractionOldString() );
 
   {
     using keys = MultiFluidBase::viewKeyStruct;

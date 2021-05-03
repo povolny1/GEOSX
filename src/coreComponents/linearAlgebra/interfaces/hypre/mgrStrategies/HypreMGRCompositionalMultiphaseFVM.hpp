@@ -61,17 +61,22 @@ public:
     // Level 0: eliminate last density which corresponds to the volume constraint equation
     m_labels[0].resize( m_numBlocks - 1 );
     std::iota( m_labels[0].begin(), m_labels[0].end(), 0 );
-    // Level 1: eliminate pressure
+    // Level 1: eliminate the other density
     m_labels[1].resize( m_numBlocks - 2 );
-    std::iota( m_labels[1].begin(), m_labels[1].end(), 1 );
+    std::iota( m_labels[1].begin(), m_labels[1].end(), 0 );
 
     setupLabels();
 
     m_levelFRelaxMethod[0] = 0; // Jacobi
-    m_levelFRelaxMethod[1] = 2; // AMG V-cycle
+    m_levelFRelaxMethod[1] = 0; // Jacobi
+
+    m_levelInterpType[0] = 2;       // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[0] = 0; // standard Galerkin
+    m_levelInterpType[1] = 2;       // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[1] = 0; // standard Galerkin
 
     m_globalSmoothType = 16; // ILU(0)
-    m_numGlobalSmoothSweeps = 1;
+    m_numGlobalSmoothSweeps = 0;
   }
 
   /**
@@ -92,15 +97,15 @@ public:
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetGlobalsmoothType( precond.ptr, m_globalSmoothType ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( precond.ptr, m_numGlobalSmoothSweeps ) );
 
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUCreate( &mgrData.coarseSolver.ptr ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( mgrData.coarseSolver.ptr, 0 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetLevelOfFill( mgrData.coarseSolver.ptr, 0 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetMaxIter( mgrData.coarseSolver.ptr, 1 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetTol( mgrData.coarseSolver.ptr, 0.0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGCreate( &mgrData.coarseSolver.ptr ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetPrintLevel( mgrData.coarseSolver.ptr, 0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxIter( mgrData.coarseSolver.ptr, 1 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetTol( mgrData.coarseSolver.ptr, 0.0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetRelaxOrder( mgrData.coarseSolver.ptr, 1 ) );
 
-    mgrData.coarseSolver.setup = HYPRE_ILUSetup;
-    mgrData.coarseSolver.solve = HYPRE_ILUSolve;
-    mgrData.coarseSolver.destroy = HYPRE_ILUDestroy;
+    mgrData.coarseSolver.setup = HYPRE_BoomerAMGSetup;
+    mgrData.coarseSolver.solve = HYPRE_BoomerAMGSolve;
+    mgrData.coarseSolver.destroy = HYPRE_BoomerAMGDestroy;
   }
 };
 
