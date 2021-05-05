@@ -217,6 +217,7 @@ struct LinearSolverParameters
       hybridSinglePhasePoroelastic,     ///< single phase poroelastic with hybrid finite volume single phase flow
       singlePhaseWithWells,
       singlePhasePoroelasticWithWells,
+      multiphasePoroelastic,
       multiphasePoroelasticWithWells
     };
 
@@ -289,6 +290,7 @@ ENUM_STRINGS( LinearSolverParameters::MGR::StrategyType,
               "hybridSinglePhasePoroelastic",
               "singlePhaseWithWells",
               "singlePhasePoroelasticWithWells",
+              "multiphasePoroelastic",
               "multiphasePoroelasticWithWells" )
 
 ENUM_STRINGS( LinearSolverParameters::AMG::CycleType,

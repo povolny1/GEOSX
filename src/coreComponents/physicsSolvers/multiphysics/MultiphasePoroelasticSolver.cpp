@@ -66,6 +66,13 @@ MultiphasePoroelasticSolver::MultiphasePoroelasticSolver( const string & name,
   registerWrapper( viewKeyStruct::couplingTypeOptionStringString(), &m_couplingTypeOption ).
     setInputFlag( InputFlags::REQUIRED ).
     setDescription( "Coupling method. Valid options:\n* " + EnumStrings< CouplingTypeOption >::concat( "\n* " ) );
+
+  m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::multiphasePoroelastic;
+  m_linearSolverParameters.get().mgr.separateComponents = true;
+  m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
+  m_linearSolverParameters.get().dofsPerNode = 3;
+
+
 }
 
 void MultiphasePoroelasticSolver::registerDataOnMesh( Group & meshBodies )
@@ -217,6 +224,21 @@ void MultiphasePoroelasticSolver::assembleSystem( real64 const time_n,
                                                                       localMatrix,
                                                                       localRhs );
 
+
+  if( m_solidSolver->targetRegionNames().size() > 1 )
+  {
+    string const regionName = m_solidSolver->targetRegionNames()[1];
+    string const solidMaterialName = m_solidSolver->solidMaterialNames()[1];
+
+    m_solidSolver->assembleSystemInRegion( time_n,
+                                           dt,
+                                           domain,
+                                           dofManager,
+                                           regionName,
+                                           solidMaterialName,
+                                           localMatrix,
+                                           localRhs );
+  }
 
 
   // Face-based contributions

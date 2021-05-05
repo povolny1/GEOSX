@@ -116,6 +116,96 @@ protected:
 };
 
 /**
+ * @brief MultiphasePoromechanics strategy.
+ *
+ * Labels description stored in point_marker_array
+ *   - dofLabel: 0             = nodal displacement, x-component
+ *   - dofLabel: 1             = nodal displacement, y-component
+ *   - dofLabel: 2             = nodal displacement, z-component
+ *   - dofLabel: 3             = pressure
+ *   - dofLabel: 4             = density
+ *             ...             = densities
+ *   - dofLabel: numLabels - 1 = density
+ *
+ * 3-level MGR reduction strategy based on CompositionalMultiphaseFVM
+ *   - 1st level: eliminate displacements (0,1,2)
+ *   - 2nd level: eliminate the reservoir density associated with the volume constraint (numLabels - 1)
+ *   - 3nd level: eliminate the pressure
+ *   - The coarse grid solved with ILU(0).
+ *
+ */
+class MultiphasePoroelastic : public MGRStrategyBase< 3 >
+{
+public:
+  /**
+   * @brief Constructor.
+   * @param numComponentsPerField array with number of components for each field
+   */
+  explicit MultiphasePoroelastic( arrayView1d< localIndex const > const & numComponentsPerField )
+    : MGRStrategyBase( LvArray::integerConversion< HYPRE_Int >( numComponentsPerField[0] + numComponentsPerField[1] ) )
+  {
+    // Level 0: eliminate displacement degrees of freedom
+    m_labels[0].resize( m_numBlocks - 3 );
+    std::iota( m_labels[0].begin(), m_labels[0].end(), 3 );
+    // Level 1: eliminate last density which corresponds to the volume constraint equation
+    m_labels[1].resize( m_numBlocks - 4 );
+    std::iota( m_labels[1].begin(), m_labels[1].end(), 3 );
+    // Level 2: eliminate pressure
+    m_labels[2].resize( m_numBlocks - 5 );
+    std::iota( m_labels[2].begin(), m_labels[2].end(), 3 );
+
+    setupLabels();
+
+    m_levelFRelaxMethod[0] = 2; // AMG V-cycle
+    m_levelFRelaxMethod[1] = 0; // Jacobi
+    m_levelFRelaxMethod[2] = 0; // Jacobi
+
+    // Specified for the first level and default for the remaining
+    m_levelInterpType[0] = 2;       // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[0] = 1; // diagonal sparsification
+    m_levelInterpType[1] = 2;       // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[1] = 0; // standard Galerkin
+    m_levelInterpType[2] = 2;       // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[0] = 0; // standard Galerkin
+
+//    m_globalSmoothType = 16; // ILU(0)
+    m_numGlobalSmoothSweeps = 0;
+  }
+
+  /**
+   * @brief Setup the MGR strategy.
+   * @param precond preconditioner wrapper
+   * @param mgrData auxiliary MGR data
+   */
+  void setup( LinearSolverParameters::MGR const &,
+              HyprePrecWrapper & precond,
+              HypreMGRData & mgrData )
+  {
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCpointsByPointMarkerArray( precond.ptr,
+                                                                  m_numBlocks, numLevels,
+                                                                  m_numLabels, m_ptrLabels,
+                                                                  mgrData.pointMarkers.data() ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelFRelaxMethod( precond.ptr, m_levelFRelaxMethod ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetNonCpointsToFpoints( precond.ptr, 1 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetPMaxElmts( precond.ptr, 0 ));
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetLevelInterpType( precond.ptr, m_levelInterpType ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetCoarseGridMethod( precond.ptr, m_levelCoarseGridMethod ) );
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( precond.ptr, m_numGlobalSmoothSweeps ) );
+
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGCreate( &mgrData.coarseSolver.ptr ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetPrintLevel( mgrData.coarseSolver.ptr, 0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxIter( mgrData.coarseSolver.ptr, 1 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetTol( mgrData.coarseSolver.ptr, 0.0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetRelaxOrder( mgrData.coarseSolver.ptr, 1 ) );
+
+    mgrData.coarseSolver.setup = HYPRE_BoomerAMGSetup;
+    mgrData.coarseSolver.solve = HYPRE_BoomerAMGSolve;
+    mgrData.coarseSolver.destroy = HYPRE_BoomerAMGDestroy;
+  }
+};
+
+/**
  * @brief SinglePhaseWithWells strategy.
  */
 class SinglePhaseWithWells : public MGRStrategyBase< 1 >
@@ -326,17 +416,22 @@ public:
     // Level 0: eliminate last density which corresponds to the volume constraint equation
     m_labels[0].resize( m_numBlocks - 1 );
     std::iota( m_labels[0].begin(), m_labels[0].end(), 0 );
-    // Level 1: eliminate pressure
+    // Level 1: eliminate the other density
     m_labels[1].resize( m_numBlocks - 2 );
-    std::iota( m_labels[1].begin(), m_labels[1].end(), 1 );
+    std::iota( m_labels[1].begin(), m_labels[1].end(), 0 );
 
     setupLabels();
 
     m_levelFRelaxMethod[0] = 0; // Jacobi
-    m_levelFRelaxMethod[1] = 2; // AMG V-cycle
+    m_levelFRelaxMethod[1] = 0; // Jacobi
+
+    m_levelInterpType[0] = 2;       // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[0] = 0; // standard Galerkin
+    m_levelInterpType[1] = 2;       // diagonal scaling (Jacobi)
+    m_levelCoarseGridMethod[1] = 0; // standard Galerkin
 
     m_globalSmoothType = 16; // ILU(0)
-    m_numGlobalSmoothSweeps = 1;
+    m_numGlobalSmoothSweeps = 0;
   }
 
   /**
@@ -357,15 +452,15 @@ public:
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetGlobalsmoothType( precond.ptr, m_globalSmoothType ) );
     GEOSX_LAI_CHECK_ERROR( HYPRE_MGRSetMaxGlobalsmoothIters( precond.ptr, m_numGlobalSmoothSweeps ) );
 
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUCreate( &mgrData.coarseSolver.ptr ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetType( mgrData.coarseSolver.ptr, 0 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetLevelOfFill( mgrData.coarseSolver.ptr, 0 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetMaxIter( mgrData.coarseSolver.ptr, 1 ) );
-    GEOSX_LAI_CHECK_ERROR( HYPRE_ILUSetTol( mgrData.coarseSolver.ptr, 0.0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGCreate( &mgrData.coarseSolver.ptr ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetPrintLevel( mgrData.coarseSolver.ptr, 0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxIter( mgrData.coarseSolver.ptr, 1 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetTol( mgrData.coarseSolver.ptr, 0.0 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetRelaxOrder( mgrData.coarseSolver.ptr, 1 ) );
 
-    mgrData.coarseSolver.setup = HYPRE_ILUSetup;
-    mgrData.coarseSolver.solve = HYPRE_ILUSolve;
-    mgrData.coarseSolver.destroy = HYPRE_ILUDestroy;
+    mgrData.coarseSolver.setup = HYPRE_BoomerAMGSetup;
+    mgrData.coarseSolver.solve = HYPRE_BoomerAMGSolve;
+    mgrData.coarseSolver.destroy = HYPRE_BoomerAMGDestroy;
   }
 };
 

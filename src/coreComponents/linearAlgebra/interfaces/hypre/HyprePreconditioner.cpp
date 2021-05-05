@@ -410,6 +410,12 @@ void createMGR( LinearSolverParameters const & params,
       setStrategy< SinglePhasePoroelasticWithWells >( params.mgr, numComponentsPerField, precond, mgrData );
       break;
     }
+    case LinearSolverParameters::MGR::StrategyType::multiphasePoroelastic:
+    {
+      setStrategy< MultiphasePoroelastic >( params.mgr, numComponentsPerField, precond, mgrData );
+      break;
+    }
+
     default:
     {
       GEOSX_ERROR( "Unsupported MGR strategy: " << params.mgr.strategy );
@@ -445,7 +451,7 @@ void createMGR( LinearSolverParameters const & params,
 
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetStrongThreshold( mgrData.mechSolver.ptr, 1e-2 ) );
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetMaxLevels( mgrData.mechSolver.ptr, 5 ) );
-    //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetNumSweeps( mgrData.mechSolver.ptr, 10 ) );
+    GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetNumSweeps( mgrData.mechSolver.ptr, 10 ) );
     //GEOSX_LAI_CHECK_ERROR( HYPRE_BoomerAMGSetCycleType( mgrData.mechSolver.ptr, 2 ) );
 
     mgrData.mechSolver.setup = HYPRE_BoomerAMGSetup;

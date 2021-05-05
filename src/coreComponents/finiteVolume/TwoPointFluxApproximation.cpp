@@ -185,7 +185,6 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
       real64 const mechanicalStabCoef = 9.0 * elemBiotCoefficient[er][esr][ei] * elemBiotCoefficient[er][esr][ei] / ( 32.0 * ( lameCoef + 4 * elemShearModulus[er][esr][ei] ) );
       //std::cout << "bulkModulus = " << elemBulkModulus[er][esr][ei] << " shearModulus = " << elemShearModulus[er][esr][ei]  <<
       // "mechanicalStabCoef = " << mechanicalStabCoef << std::endl;
-
       faceWeight += 1.0 / halfWeight;
       stabGeomWeight += 0.5 * elemVolume[er][esr][ei];
       stabMechWeight += 1.0 / mechanicalStabCoef;
