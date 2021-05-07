@@ -5,6 +5,7 @@ setup(name='pygeosx_tools',
       description='Tools for interacting with pygeosx',
       author='Chris Sherman',
       author_email='sherman27@llnl.gov',
-      packages=['pygeosx_tools'],
+      packages=['pygeosx_tools',
+                'pygeosx_tools.geophysics'],
       install_requires=['matplotlib', 'pyevtk'])
 
