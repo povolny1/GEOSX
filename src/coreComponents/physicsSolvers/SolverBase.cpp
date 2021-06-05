@@ -575,12 +575,26 @@ real64 SolverBase::nonlinearImplicitStep( real64 const & time_n,
       m_rhs.create( m_localRhs.toViewConst(), MPI_COMM_GEOSX );
       m_solution.createWithLocalSize( m_matrix.numLocalCols(), MPI_COMM_GEOSX );
 
+      // if( cycleNumber == 4 )
+      // {
+      // 	{
+      // 	  char filename[200] = { 0 };
+      // 	  snprintf( filename, 200, "%s_%06d_%02d.mtx", "mat_compFlow_", cycleNumber, newtonIter );
+      // 	  m_matrix.write( filename, LAIOutputFormat::NATIVE_ASCII );
+      // 	}
+      // 	{
+      // 	  char filename[200] = { 0 };
+      // 	  snprintf( filename, 200, "%s_%06d_%02d.mtx", "rhs_compFlow_", cycleNumber, newtonIter );
+      // 	  m_rhs.write( filename, LAIOutputFormat::NATIVE_ASCII );
+      // 	}
+      // }
+        
       // Output the linear system matrix/rhs for debugging purposes
       debugOutputSystem( time_n, cycleNumber, newtonIter, m_matrix, m_rhs );
 
       // Solve the linear system
       solveSystem( m_dofManager, m_matrix, m_rhs, m_solution );
-
+      
       // Output the linear system solution for debugging purposes
       debugOutputSolution( time_n, cycleNumber, newtonIter, m_solution );
 
@@ -599,7 +613,7 @@ real64 SolverBase::nonlinearImplicitStep( real64 const & time_n,
 
       // apply the system solution to the fields/variables
       applySystemSolution( m_dofManager, m_localSolution, scaleFactor, domain );
-
+      
       lastResidual = residualNorm;
     }
 

@@ -302,6 +302,9 @@ protected:
   /// copy of the time step size saved in this class for residual normalization
   real64 m_currentDt;
 
+  /// current time
+  real64 m_currentTime;
+  
   /// views into reservoir constant data fields
   ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > >  m_resGravCoef;
 };

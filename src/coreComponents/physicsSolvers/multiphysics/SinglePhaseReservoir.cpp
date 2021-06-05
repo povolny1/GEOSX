@@ -55,14 +55,14 @@ void SinglePhaseReservoir::postProcessInput()
   else if( dynamicCast< PoroelasticSolver const * >( m_flowSolver ) )
   {
     m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::singlePhasePoroelasticWithWells;
+    m_linearSolverParameters.get().mgr.separateComponents = true;
+    m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
+    m_linearSolverParameters.get().dofsPerNode = 3;
   }
   else
   {
     GEOSX_ERROR( "Solver not found" );
   }
-  m_linearSolverParameters.get().mgr.separateComponents = true;
-  m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
-  m_linearSolverParameters.get().dofsPerNode = 3;
 }
 
 void SinglePhaseReservoir::setupSystem( DomainPartition & domain,

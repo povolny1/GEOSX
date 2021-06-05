@@ -157,13 +157,23 @@ void ProblemManager::problemSetup()
   GEOSX_MARK_FUNCTION;
   postProcessInputRecursive();
 
+  std::cout << "1" << std::endl;
+  
   generateMesh();
+
+  std::cout << "2" << std::endl;  
 
   applyNumericalMethods();
 
+  std::cout << "3" << std::endl;
+  
   registerDataOnMeshRecursive( getDomainPartition().getMeshBodies() );
 
+  std::cout << "4" << std::endl;
+  
   initialize();
+
+  std::cout << "5" << std::endl;  
 }
 
 
@@ -712,8 +722,11 @@ DomainPartition const & ProblemManager::getDomainPartition() const
 
 void ProblemManager::applyInitialConditions()
 {
+  std::cout << "6" << std::endl; 
   m_fieldSpecificationManager->applyInitialConditions( getDomainPartition() );
+  std::cout << "7" << std::endl;     
   initializePostInitialConditions();
+  std::cout << "8" << std::endl;   
 }
 
 void ProblemManager::readRestartOverwrite()

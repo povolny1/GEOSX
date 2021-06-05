@@ -184,46 +184,45 @@ void CornerPointMeshBuilder::buildCornerPointCells()
           cellToCPVertices( iLocalCell ) = iFirstVertexLocal;
 
           // save the position of the eight vertices, and assign global CP vertex indices
-          localIndex const order[nCPVerticesPerCell] = { 4, 5, 6, 7, 0, 1, 2, 3 };
+          localIndex const order[nCPVerticesPerCell] = { 0, 1, 2, 3, 4, 5, 6, 7  };
           for( localIndex pos = 0; pos < nCPVerticesPerCell; ++pos )
           {
+            /*
             real64 const xCenter = -0.003281;
             real64 const yCenter = 6811.79;
             real64 const angle = 14;
             real64 const pi = 3.14159265;
             real64 newXPos =  (xPos( order[pos] )-xCenter) * cos( -angle*pi/180 ) + (yPos( order[pos] )-yCenter) * sin( -angle*pi/180 );
             real64 newYPos = -(xPos( order[pos] )-xCenter) * sin( -angle*pi/180 ) + (yPos( order[pos] )-yCenter) * cos( -angle*pi/180 );
-            cpVertexPositions( iFirstVertexLocal + pos, 0 ) = newXPos;//xPos( order[pos] );
-            cpVertexPositions( iFirstVertexLocal + pos, 1 ) = newYPos;//yPos( order[pos] );
+	    */
+            cpVertexPositions( iFirstVertexLocal + pos, 0 ) = xPos( order[pos] );//newXPos;//xPos( order[pos] );
+            cpVertexPositions( iFirstVertexLocal + pos, 1 ) = yPos( order[pos] );//newYPos;//yPos( order[pos] );
             cpVertexPositions( iFirstVertexLocal + pos, 2 ) = -zPos( order[pos] );
             cpVertexToGlobalCPVertex( iFirstVertexLocal + pos ) = iFirstVertexGlobal + order[pos];
             cpVertexIsInsidePartition( iFirstVertexLocal + pos ) = cpVertexIsInside( order[pos] );
           }
 
-          // localIndex const iGlobal = i+iMinLocal;
-          // localIndex const jGlobal = j+jMinLocal;
-          // localIndex const kGlobal = k+kMinLocal;
-          // if( kGlobal == 39+25 )
-          // {
-          //   if( ( (iGlobal >= 104+12 && iGlobal <= 111+12) && jGlobal == 51+12 ) ||
-          //  ( (iGlobal >= 111+12 && iGlobal <= 119+12) && jGlobal == 50+12 ) )
-          //   {
-          //     real64 xWell = 0;
-          //     real64 yWell = 0;
-          //     real64 zWell = 0;
-          //     for( localIndex pos = 0; pos < nCPVerticesPerCell; ++pos )
-          //     {
-          //  xWell += cpVertexPositions( iFirstVertexLocal + pos, 0 );
-          //  yWell += cpVertexPositions( iFirstVertexLocal + pos, 1 );
-          //  zWell += cpVertexPositions( iFirstVertexLocal + pos, 2 );
-          //     }
+          localIndex const iGlobal = i+iMinLocal;
+          localIndex const jGlobal = j+jMinLocal;
+          localIndex const kGlobal = k+kMinLocal;
+          if( iGlobal == 46 && jGlobal == 176 )
+	  {
+	    if( kGlobal >= 40 && kGlobal <= 69 )
+	    {
+	      real64 xWell = 0;
+	      real64 yWell = 0;
+	      real64 zWell = 0;
+	      for( localIndex pos = 0; pos < nCPVerticesPerCell; ++pos )
+	      {
+		xWell += cpVertexPositions( iFirstVertexLocal + pos, 0 );
+		yWell += cpVertexPositions( iFirstVertexLocal + pos, 1 );
+		zWell += cpVertexPositions( iFirstVertexLocal + pos, 2 );
+	      }
 
-          //     std::cout << "(i,j,k) = " << iGlobal << " " << jGlobal << " " << kGlobal << std::endl
-          //    << "(x,y,z) = " << xWell/8.0 << " " << yWell/8.0 << " " << zWell/8.0 << std::endl;
-
-          //   }
-          // }
-
+	      std::cout << "(i,j,k) = " << iGlobal << " " << jGlobal << " " << kGlobal << std::endl
+			<< "(x,y,z) = " << xWell/8.0 << " " << yWell/8.0 << " " << zWell/8.0 << std::endl;
+	    }
+	  }
         }
       }
     }

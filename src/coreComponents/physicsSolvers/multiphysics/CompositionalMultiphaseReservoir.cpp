@@ -56,11 +56,11 @@ void CompositionalMultiphaseReservoir::postProcessInput()
   }
   else if( dynamicCast< MultiphasePoroelasticSolver const * >( m_flowSolver ) )
   {
-    m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::multiphasePoroelasticWithWells;
+    m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::multiphasePoroelasticWithWells; 
+    m_linearSolverParameters.get().mgr.separateComponents = true;
+    m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
+    m_linearSolverParameters.get().dofsPerNode = 3;
   }
-  m_linearSolverParameters.get().mgr.separateComponents = true;
-  m_linearSolverParameters.get().mgr.displacementFieldName = keys::TotalDisplacement;
-  m_linearSolverParameters.get().dofsPerNode = 3;
 }
 
 void CompositionalMultiphaseReservoir::addCouplingSparsityPattern( DomainPartition const & domain,

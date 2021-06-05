@@ -106,7 +106,7 @@ void SinglePhaseWell::validateWellConstraints( MeshLevel const & meshLevel ) con
   {
     WellControls const & wellControls = getWellControls( subRegion );
     WellControls::Control const currentControl = wellControls.getControl();
-    real64 const targetTotalRate = wellControls.getTargetTotalRate();
+    real64 const targetTotalRate = wellControls.getTargetTotalRate( m_currentTime );
     real64 const targetPhaseRate = wellControls.getTargetPhaseRate();
     GEOSX_ERROR_IF( currentControl == WellControls::Control::PHASEVOLRATE,
                     "Phase rate control is not available for SinglePhaseWell" );
@@ -348,6 +348,7 @@ void SinglePhaseWell::initializeWells( DomainPartition & domain )
     // 5) Estimate the well rates
     RateInitializationKernel::launch< parallelDevicePolicy<> >( subRegion.size(),
                                                                 wellControls,
+								m_currentTime,
                                                                 wellElemDens,
                                                                 connRate );
   } );
@@ -438,6 +439,7 @@ void SinglePhaseWell::formPressureRelations( DomainPartition const & domain,
                                                               subRegion.isLocallyOwned(),
                                                               subRegion.getTopWellElementIndex(),
                                                               wellControls,
+							      m_currentTime,
                                                               wellElemDofNumber,
                                                               wellElemGravCoef,
                                                               nextWellElemIndex,
@@ -455,7 +457,7 @@ void SinglePhaseWell::formPressureRelations( DomainPartition const & domain,
 
       if( wellControls.getControl() == WellControls::Control::BHP )
       {
-        wellControls.switchToTotalRateControl( wellControls.getTargetTotalRate() );
+        wellControls.switchToTotalRateControl( wellControls.getTargetTotalRate( m_currentTime ) );
         GEOSX_LOG_LEVEL_RANK_0( 1, "Control switch for well " << subRegion.getName()
                                                               << " from BHP constraint to rate constraint" );
       }
@@ -582,6 +584,7 @@ SinglePhaseWell::calculateResidualNorm( DomainPartition const & domain,
                                                         wellElemDofNumber,
                                                         wellElemGhostRank,
                                                         wellElemDensity,
+							m_currentTime,							
                                                         m_currentDt,
                                                         &localResidualNorm );
 

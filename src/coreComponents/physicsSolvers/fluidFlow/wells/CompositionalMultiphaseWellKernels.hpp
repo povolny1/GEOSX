@@ -486,6 +486,7 @@ struct PressureRelationKernel
           localIndex const targetPhaseIndex,
           localIndex const numDofPerResElement,
           WellControls const & wellControls,
+	  real64 const & currentTime,  
           arrayView1d< globalIndex const > const & wellElemDofNumber,
           arrayView1d< real64 const > const & wellElemGravCoef,
           arrayView1d< localIndex const > const & nextWellElemIndex,
@@ -504,7 +505,7 @@ struct PressureRelationKernel
     WellControls::Type const wellType = wellControls.getType();
     WellControls::Control const currentControl = wellControls.getControl();
     real64 const targetBHP = wellControls.getTargetBHP();
-    real64 const targetTotalRate = wellControls.getTargetTotalRate();
+    real64 const targetTotalRate = wellControls.getTargetTotalRate( currentTime );
     real64 const targetPhaseRate = wellControls.getTargetPhaseRate();
 
     // dynamic well control data
@@ -783,6 +784,7 @@ struct PerforationKernel
       // b) get well variables
 
       pres[CompositionalMultiphaseWell::SubRegionTag::WELL] = wellElemPres[iwelem] + dWellElemPres[iwelem];
+
       dPres_dP[CompositionalMultiphaseWell::SubRegionTag::WELL] = 1.0;
 
       multiplier[CompositionalMultiphaseWell::SubRegionTag::WELL] = -1.0;
@@ -1312,13 +1314,14 @@ struct RateInitializationKernel
   launch( localIndex const subRegionSize,
           localIndex const targetPhaseIndex,
           WellControls const & wellControls,
+	  real64 const & currentTime,
           arrayView3d< real64 const > const & phaseDens,
           arrayView2d< real64 const > const & totalDens,
           arrayView1d< real64 > const & connRate )
   {
     WellControls::Control const control = wellControls.getControl();
     WellControls::Type const wellType = wellControls.getType();
-    real64 const targetTotalRate = wellControls.getTargetTotalRate();
+    real64 const targetTotalRate = wellControls.getTargetTotalRate( currentTime );
     real64 const targetPhaseRate = wellControls.getTargetPhaseRate();
 
     // Estimate the connection rates
@@ -1427,13 +1430,15 @@ struct ResidualNormKernel
           arrayView1d< integer const > const & wellElemGhostRank,
           arrayView3d< real64 const > const & wellElemPhaseDens,
           arrayView2d< real64 const > const & wellElemTotalDens,
+	  real64 const & currentTime,	  
           real64 const dt,
           real64 * localResidualNorm )
   {
     WellControls::Type const wellType = wellControls.getType();
     WellControls::Control const currentControl = wellControls.getControl();
     real64 const targetBHP = wellControls.getTargetBHP();
-    real64 const targetTotalRate = wellControls.getTargetTotalRate();
+    real64 const targetTotalRate = wellControls.getTargetTotalRate( currentTime );
+    
     real64 const targetPhaseRate = wellControls.getTargetPhaseRate();
     real64 const absTargetTotalRate = fabs( targetTotalRate );
     real64 const absTargetPhaseRate = fabs( targetPhaseRate );

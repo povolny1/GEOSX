@@ -70,6 +70,7 @@ void ConstitutiveBase::allocateConstitutiveData( dataRepository::Group & parent,
     if( wrapper.second->sizedFromParent() )
     {
       string const wrapperName = wrapper.first;
+      /*
       bool const skip = ( makeFieldName( this->getName(), wrapperName ) == "rock_BiotCoefficient" ||
                           makeFieldName( this->getName(), wrapperName ) == "rock_density" ||
                           makeFieldName( this->getName(), wrapperName ) == "rock_shearModulus" ||
@@ -77,14 +78,16 @@ void ConstitutiveBase::allocateConstitutiveData( dataRepository::Group & parent,
                         parent.hasWrapper( makeFieldName( this->getName(), wrapperName ) );
       if( !skip )
       {
+      */
         parent.registerWrapper( makeFieldName( this->getName(), wrapperName ), wrapper.second->clone( wrapperName, parent ) ).
           setRestartFlags( RestartFlags::NO_WRITE );
-      }
+      //}
     }
   }
 
   this->resize( parent.size() );
 
+  /*
   for( auto & wrapper : this->wrappers() )
   {
     if( wrapper.second->sizedFromParent() )
@@ -124,6 +127,7 @@ void ConstitutiveBase::allocateConstitutiveData( dataRepository::Group & parent,
 
     }
   }
+  */
 }
 
 std::unique_ptr< ConstitutiveBase >

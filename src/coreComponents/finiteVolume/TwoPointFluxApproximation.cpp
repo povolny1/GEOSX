@@ -76,12 +76,12 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
   ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > const elemVolume =
     elemManager.constructArrayViewAccessor< real64, 1 >( CellBlock::viewKeyStruct::elementVolumeString() );
 
-  ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > const elemBiotCoefficient =
-    elemManager.constructArrayViewAccessor< real64, 1 >( "rock_BiotCoefficient" );
-  ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > const elemShearModulus =
-    elemManager.constructArrayViewAccessor< real64, 1 >( "rock_shearModulus" );
-  ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > const elemBulkModulus =
-    elemManager.constructArrayViewAccessor< real64, 1 >( "rock_bulkModulus" );
+  // ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > const elemBiotCoefficient =
+  //   elemManager.constructArrayViewAccessor< real64, 1 >( "rock_BiotCoefficient" );
+  // ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > const elemShearModulus =
+  //   elemManager.constructArrayViewAccessor< real64, 1 >( "rock_shearModulus" );
+  // ElementRegionManager::ElementViewAccessor< arrayView1d< real64 const > > const elemBulkModulus =
+  //   elemManager.constructArrayViewAccessor< real64, 1 >( "rock_bulkModulus" );
 
   ElementRegionManager::ElementViewAccessor< arrayView2d< real64 const > > const coefficient =
     elemManager.constructArrayViewAccessor< real64, 2 >( m_coeffName );
@@ -145,7 +145,7 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
 
     real64 faceWeight = 0.0;
     real64 stabGeomWeight = 0.0;
-    real64 stabMechWeight = 0.0;
+    //real64 stabMechWeight = 0.0;
 
     for( localIndex ke = 0; ke < 2; ++ke )
     {
@@ -178,16 +178,18 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
         halfWeight = LvArray::tensorOps::AiBi< 3 >( cellToFaceVec, faceConormal );
       }
 
+      if( c2fDistance < 1e-18 )
+	std::cout << "c2fDistance is zero" << std::endl; 
       halfWeight *= faceArea / c2fDistance;
       halfWeight = std::fmax( halfWeight, weightTolerance );
 
-      real64 const lameCoef = elemBulkModulus[er][esr][ei] - 2.0 * elemShearModulus[er][esr][ei] / 3.0;
-      real64 const mechanicalStabCoef = 9.0 * elemBiotCoefficient[er][esr][ei] * elemBiotCoefficient[er][esr][ei] / ( 32.0 * ( lameCoef + 4 * elemShearModulus[er][esr][ei] ) );
+      //real64 const lameCoef = elemBulkModulus[er][esr][ei] - 2.0 * elemShearModulus[er][esr][ei] / 3.0;
+      //real64 const mechanicalStabCoef = 9.0 * elemBiotCoefficient[er][esr][ei] * elemBiotCoefficient[er][esr][ei] / ( 32.0 * ( lameCoef + 4 * elemShearModulus[er][esr][ei] ) );
       //std::cout << "bulkModulus = " << elemBulkModulus[er][esr][ei] << " shearModulus = " << elemShearModulus[er][esr][ei]  <<
       // "mechanicalStabCoef = " << mechanicalStabCoef << std::endl;
       faceWeight += 1.0 / halfWeight;
       stabGeomWeight += 0.5 * elemVolume[er][esr][ei];
-      stabMechWeight += 1.0 / mechanicalStabCoef;
+      //stabMechWeight += 1.0 / mechanicalStabCoef;
     }
 
     // face weight for physical fluxes
@@ -195,12 +197,12 @@ void TwoPointFluxApproximation::computeCellStencil( MeshLevel & mesh ) const
     faceWeight = 1.0 / faceWeight;
 
     // face weight for artificial fluxes
-    stabMechWeight = 1.0 / stabMechWeight;
+    //stabMechWeight = 1.0 / stabMechWeight;
 
     for( localIndex ke = 0; ke < 2; ++ke )
     {
       stencilWeights[ke] = transMultiplier[kf] * faceWeight * (ke == 0 ? 1 : -1);
-      stencilStabWeights[ke] = stabGeomWeight * stabMechWeight * (ke == 0 ? 1 : -1);
+      stencilStabWeights[ke] = 0;//stabGeomWeight * stabMechWeight * (ke == 0 ? 1 : -1);
     }
 
     // Ensure elements are added to stencil in order of global indices

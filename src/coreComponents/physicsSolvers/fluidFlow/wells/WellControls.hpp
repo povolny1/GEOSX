@@ -22,6 +22,7 @@
 
 #include "codingUtilities/EnumStrings.hpp"
 #include "dataRepository/Group.hpp"
+#include "functions/TableFunction.hpp"
 
 namespace geosx
 {
@@ -174,7 +175,17 @@ public:
    * @brief Get the target total rate
    * @return the target total rate
    */
-  const real64 & getTargetTotalRate() const { return m_targetTotalRate; }
+  real64 getTargetTotalRate( real64 const & currentTime ) const
+  {
+    if( m_totalRateTable )
+    {
+      return m_totalRateTable->evaluate( &currentTime );  
+    }
+    else
+    {
+      return m_targetTotalRate;
+    }
+  }
 
   /**
    * @brief Get the target phase rate
@@ -243,6 +254,8 @@ public:
     static constexpr char const * surfacePressureString() { return "surfacePressure"; }
     /// String key for the surface temperature
     static constexpr char const * surfaceTemperatureString() { return "surfaceTemperature"; }
+    /// String key for the time dependent table name
+    static constexpr char const * totalRateTableNameString() { return "totalRateTableName"; } 
     /// ViewKey for the reference elevation
     dataRepository::ViewKey referenceElevation   = { refElevString() };
     /// ViewKey for the well type
@@ -314,6 +327,12 @@ private:
   /// Surface temperature
   real64 m_surfaceTemp;
 
+  /// Name of the table containing the time-dependent total rates
+  string m_totalRateTableName;
+
+  /// Table containing the time-dependent total rates  
+  TableFunction * m_totalRateTable;
+  
 };
 
 ENUM_STRINGS( WellControls::Type, "producer", "injector" )

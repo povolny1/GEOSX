@@ -36,7 +36,8 @@ WellSolverBase::WellSolverBase( string const & name,
   : SolverBase( name, parent ),
   m_numDofPerWellElement( 0 ),
   m_numDofPerResElement( 0 ),
-  m_currentDt( 0 )
+  m_currentDt( 0 ),
+  m_currentTime( 0 )  
 {
   this->registerWrapper( viewKeyStruct::fluidNamesString(), &m_fluidModelNames ).
     setInputFlag( InputFlags::REQUIRED ).
@@ -138,6 +139,8 @@ void WellSolverBase::assembleSystem( real64 const time,
                                      CRSMatrixView< real64, globalIndex const > const & localMatrix,
                                      arrayView1d< real64 > const & localRhs )
 {
+  m_currentTime = time + dt; 
+  
   // then assemble the mass balance equations
   assembleFluxTerms( time, dt, domain, dofManager, localMatrix, localRhs );
 

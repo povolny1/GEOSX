@@ -121,6 +121,9 @@ void CompositionalMultiphaseWell::registerDataOnMesh( Group & meshBodies )
   forTargetSubRegions< WellElementSubRegion >( meshLevel, [&]( localIndex const,
                                                                WellElementSubRegion & subRegion )
   {
+
+    std::cout << "subRegion.size() = " << subRegion.size() << std::endl;
+    
     subRegion.registerWrapper< array1d< real64 > >( viewKeyStruct::pressureString() ).setPlotLevel( PlotLevel::LEVEL_0 );
     subRegion.registerWrapper< array1d< real64 > >( viewKeyStruct::deltaPressureString() ).
       setRestartFlags( RestartFlags::NO_WRITE );
@@ -296,7 +299,7 @@ void CompositionalMultiphaseWell::validateWellConstraints( MeshLevel const & mes
     WellControls const & wellControls = getWellControls( subRegion );
     WellControls::Type const wellType = wellControls.getType();
     WellControls::Control const currentControl = wellControls.getControl();
-    real64 const & targetTotalRate = wellControls.getTargetTotalRate();
+    real64 const & targetTotalRate = wellControls.getTargetTotalRate( m_currentTime );
     real64 const & targetPhaseRate = wellControls.getTargetPhaseRate();
     integer const useSurfaceConditions = wellControls.useSurfaceConditions();
     real64 const & surfaceTemp = wellControls.getSurfaceTemperature();
@@ -500,6 +503,7 @@ void CompositionalMultiphaseWell::updateBHPForConstraint( WellElementSubRegion &
   {
     real64 const diffGravCoef = refGravCoef - wellElemGravCoef[iwelemRef];
     currentBHP = pres[iwelemRef] + dPres[iwelemRef] + totalMassDens[iwelemRef] * diffGravCoef;
+    std::cout << "BHP = " << currentBHP << std::endl;
     dCurrentBHP_dPres = 1 + dTotalMassDens_dPres[iwelemRef] * diffGravCoef;
     for( localIndex ic = 0; ic < NC; ++ic )
     {
@@ -638,11 +642,13 @@ void CompositionalMultiphaseWell::updateVolRatesForConstraint( WellElementSubReg
 
       // total volume rate
       real64 const currentTotalRate = connRate[iwelemRef] + dConnRate[iwelemRef];
+      std::cout << "currentTotalRate = " << currentTotalRate << std::endl;
       real64 totalDens = 0;
       for( localIndex ic = 0; ic < NC; ++ic )
       {
         totalDens += compDens[iwelemRef][ic] + dCompDens[iwelemRef][ic];
       }
+      std::cout << "totalDens = " << totalDens << std::endl;      
       real64 const totalDensInv = 1.0 / totalDens;
       currentTotalVolRate = currentTotalRate * totalDensInv;
       dCurrentTotalVolRate_dPres = 0; // using the fact that totalDens = \sum_c compDens (independent of pressure)
@@ -909,6 +915,7 @@ void CompositionalMultiphaseWell::initializeWells( DomainPartition & domain )
     CompositionalMultiphaseWellKernels::RateInitializationKernel::launch< parallelDevicePolicy<> >( subRegion.size(),
                                                                                                     m_targetPhaseIndex,
                                                                                                     wellControls,
+												    m_currentTime,
                                                                                                     wellElemPhaseDens,
                                                                                                     wellElemTotalDens,
                                                                                                     connRate );
@@ -1056,6 +1063,7 @@ CompositionalMultiphaseWell::calculateResidualNorm( DomainPartition const & doma
                                                         wellElemGhostRank,
                                                         phaseDens,
                                                         totalDens,
+							m_currentTime,
                                                         m_currentDt,
                                                         &localResidualNorm );
   } );
@@ -1347,9 +1355,9 @@ void CompositionalMultiphaseWell::chopNegativeDensities( DomainPartition & domai
           real64 const newDens = wellElemCompDens[iwelem][ic] + dWellElemCompDens[iwelem][ic];
           // we allowed for some densities to be slightly negative in CheckSystemSolution
           // if the new density is negative, chop back to zero
-          if( newDens < 0 )
+          if( newDens <= 1e-6 )
           {
-            dWellElemCompDens[iwelem][ic] = -wellElemCompDens[iwelem][ic];
+            dWellElemCompDens[iwelem][ic] = -wellElemCompDens[iwelem][ic] + 1e-6;
           }
         }
       }
@@ -1566,6 +1574,7 @@ void CompositionalMultiphaseWell::formPressureRelations( DomainPartition const &
                                                               m_targetPhaseIndex,
                                                               numDofPerResElement(),
                                                               wellControls,
+							      m_currentTime,
                                                               wellElemDofNumber,
                                                               wellElemGravCoef,
                                                               nextWellElemIndex,
@@ -1593,7 +1602,7 @@ void CompositionalMultiphaseWell::formPressureRelations( DomainPartition const &
         }
         else
         {
-          wellControls.switchToTotalRateControl( wellControls.getTargetTotalRate() );
+          wellControls.switchToTotalRateControl( wellControls.getTargetTotalRate( m_currentTime ) );
           GEOSX_LOG_LEVEL_RANK_0( 1, "Control switch for well " << subRegion.getName()
                                                                 << " from BHP constraint to total volumetric rate constraint" );
         }

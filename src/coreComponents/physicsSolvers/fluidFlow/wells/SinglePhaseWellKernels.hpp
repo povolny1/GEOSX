@@ -265,6 +265,7 @@ struct PressureRelationKernel
           bool const isLocallyOwned,
           localIndex const iwelemControl,
           WellControls const & wellControls,
+	  real64 const & currentTime,
           arrayView1d< globalIndex const > const & wellElemDofNumber,
           arrayView1d< real64 const > const & wellElemGravCoef,
           arrayView1d< localIndex const > const & nextWellElemIndex,
@@ -279,7 +280,7 @@ struct PressureRelationKernel
     WellControls::Type const wellType = wellControls.getType();
     WellControls::Control const currentControl = wellControls.getControl();
     real64 const targetBHP = wellControls.getTargetBHP();
-    real64 const targetRate = wellControls.getTargetTotalRate();
+    real64 const targetRate = wellControls.getTargetTotalRate( currentTime );
 
     // dynamic well control data
     real64 const & currentBHP =
@@ -609,10 +610,11 @@ struct RateInitializationKernel
   static void
   launch( localIndex const subRegionSize,
           WellControls const & wellControls,
+	  real64 const & currentTime,
           arrayView2d< real64 const > const & wellElemDens,
           arrayView1d< real64 > const & connRate )
   {
-    real64 const targetRate = wellControls.getTargetTotalRate();
+    real64 const targetRate = wellControls.getTargetTotalRate( currentTime );
     WellControls::Control const control = wellControls.getControl();
     WellControls::Type const wellType = wellControls.getType();
 
@@ -657,12 +659,13 @@ struct ResidualNormKernel
           arrayView1d< globalIndex const > const & wellElemDofNumber,
           arrayView1d< integer const > const & wellElemGhostRank,
           arrayView2d< real64 const > const & wellElemDens,
+	  real64 const & currentTime,	  
           real64 const dt,
           real64 * localResidualNorm )
   {
     WellControls::Control const currentControl = wellControls.getControl();
     real64 const targetBHP = wellControls.getTargetBHP();
-    real64 const targetRate = wellControls.getTargetTotalRate();
+    real64 const targetRate = wellControls.getTargetTotalRate( currentTime );
     real64 const absTargetRate = fabs( targetRate );
 
     RAJA::ReduceSum< REDUCE_POLICY, real64 > sumScaled( 0.0 );

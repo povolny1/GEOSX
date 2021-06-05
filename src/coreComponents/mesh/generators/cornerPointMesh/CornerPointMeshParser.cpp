@@ -186,6 +186,19 @@ void CornerPointMeshParser::readMesh( Path const & filePath,
     }
   }
 
+  // TODO: error out if one of them is missing
+  if( foundPERMX && !foundPERMY && !foundPERMZ )
+  {
+    m_perm.resizeDimension< 0, 1 >( m_permx.size(), 3 );
+    for( localIndex i = 0; i < m_permx.size(); ++i )
+    {
+      m_perm( i, 0 ) = m_permx( i );
+      m_perm( i, 1 ) = m_permx( i );
+      m_perm( i, 2 ) = 0.1*m_permx( i ); // for Northern Lights
+    }
+  }
+
+  
   GEOSX_THROW_IF( !foundCOORD || !foundZCORN,
                   "At least one of the following keywords was not found: COORD, ZCORN",
                   InputError );

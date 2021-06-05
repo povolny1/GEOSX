@@ -1053,9 +1053,9 @@ void CompositionalMultiphaseBase::chopNegativeDensities( DomainPartition & domai
         for( localIndex ic = 0; ic < NC; ++ic )
         {
           real64 const newDens = compDens[ei][ic] + dCompDens[ei][ic];
-          if( newDens < 0 )
+          if( newDens <= 1e-6 )
           {
-            dCompDens[ei][ic] = -compDens[ei][ic];
+            dCompDens[ei][ic] = -compDens[ei][ic] + 1e-6;
           }
         }
       }

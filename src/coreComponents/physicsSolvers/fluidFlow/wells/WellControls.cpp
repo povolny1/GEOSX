@@ -18,6 +18,7 @@
 
 #include "WellControls.hpp"
 #include "dataRepository/InputFlags.hpp"
+#include "functions/FunctionManager.hpp"
 
 namespace geosx
 {
@@ -36,7 +37,9 @@ WellControls::WellControls( string const & name, Group * const parent )
   m_targetPhaseName( "" ),
   m_useSurfaceConditions( 0 ),
   m_surfacePres( 0.0 ),
-  m_surfaceTemp( 0.0 )
+  m_surfaceTemp( 0.0 ),
+  m_totalRateTableName( "" ),    
+  m_totalRateTable( nullptr )
 {
   setInputFlags( InputFlags::OPTIONAL_NONUNIQUE );
 
@@ -95,6 +98,10 @@ WellControls::WellControls( string const & name, Group * const parent )
     setInputFlag( InputFlags::OPTIONAL ).
     setDescription( "Surface temperature used to compute volumetric rates when surface conditions are used" );
 
+  registerWrapper( viewKeyStruct::totalRateTableNameString(), &m_totalRateTableName ).
+    setInputFlag( InputFlags::OPTIONAL ).
+    setDescription( "Name of the table containing the total rate" );
+  
 }
 
 
@@ -163,6 +170,11 @@ void WellControls::postProcessInput()
   GEOSX_ERROR_IF( m_targetPhaseRate <= 0.0 && m_targetTotalRate <= 0.0,
                   "You need to specify a phase rate constraint for producers, and a total rate constraint for injectors" );
 
+  if( m_totalRateTableName != "" )
+  {    
+    FunctionManager & functionManager = FunctionManager::getInstance();
+    m_totalRateTable = &( functionManager.getGroup< TableFunction >( m_totalRateTableName ) );
+  }
 }
 
 void WellControls::initializePostInitialConditionsPreSubGroups()
