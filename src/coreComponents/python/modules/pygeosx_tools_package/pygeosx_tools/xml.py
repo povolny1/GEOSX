@@ -1,10 +1,5 @@
-from mpi4py import MPI
 from geosx_xml_tools import xml_processor
-
-
-# Get the MPI rank
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
+from pygeosx_tools import parallel_io
 
 
 def apply_xml_preprocessor(geosx_args):
@@ -18,11 +13,11 @@ def apply_xml_preprocessor(geosx_args):
     """
     new_input_file = ''
     file_index = geosx_args.index('-i') + 1
-    if (rank == 0):
+    if (parallel_io.rank == 0):
         print('Applying xml preprocessor...', flush=True)
         new_input_file = xml_processor.process(geosx_args[file_index], '%s.processed' % (geosx_args[file_index]))
         print('  the compiled filename is: %s' % (new_input_file), flush=True)
 
     # Broadcast and set the new input file name
-    geosx_args[file_index] = comm.bcast(new_input_file, root=0)
+    geosx_args[file_index] = parallel_io.comm.bcast(new_input_file, root=0)
 
