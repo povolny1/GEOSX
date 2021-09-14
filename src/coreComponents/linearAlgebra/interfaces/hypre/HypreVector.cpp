@@ -412,7 +412,7 @@ void HypreVector::print( std::ostream & os ) const
 
   if( this_mpi_process == 0 )
   {
-    os << "MPI_Process         GlobalRowID         GlobalColID                   Value" << std::endl;
+    os << "MPI_Process         GlobalRowID               Value" << std::endl;
   }
 
   for( int iRank = 0; iRank < n_mpi_process; iRank++ )
