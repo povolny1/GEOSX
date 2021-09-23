@@ -546,19 +546,38 @@ void ProblemManager::generateMesh()
 	  GEOSX_THROW_IF_NE( meshBodies.numSubGroups(), 1, InputError );
   }
 
-  MeshBody & meshBody = meshBodies.getGroup< MeshBody >( 0 );
+  for( localIndex a = 0; a < meshBodies.getSubGroups().size(); ++a ) // loop over mesh bodies
+  {
+    MeshBody & meshBody = meshBodies.getGroup< MeshBody >( a );
 
-  GEOSX_THROW_IF_NE( meshBody.numSubGroups(), 1, InputError );
-  MeshLevel & meshLevel = meshBody.getGroup< MeshLevel >( 0 );
+    GEOSX_THROW_IF_NE( meshBody.numSubGroups(), 1, InputError );
+    MeshLevel & meshLevel = meshBody.getGroup< MeshLevel >( a ); // is index "a" correct? or should there be an additional loop over mesh sublevels?
 
-  FaceManager & faceManager = meshLevel.getFaceManager();
-  EdgeManager & edgeManager = meshLevel.getEdgeManager();
+    FaceManager & faceManager = meshLevel.getFaceManager();
+    EdgeManager & edgeManager = meshLevel.getEdgeManager();
 
-  Group const & commandLine = this->getGroup< Group >( groupKeys.commandLine );
-  integer const useNonblockingMPI = commandLine.getReference< integer >( viewKeys.useNonblockingMPI );
-  domain.setupCommunications( useNonblockingMPI );
-  faceManager.setIsExternal();
-  edgeManager.setIsExternal( faceManager );
+    // idk if this stuff is supposed to be executed for all mesh bodies/levels
+    Group const & commandLine = this->getGroup< Group >( groupKeys.commandLine );
+    integer const useNonblockingMPI = commandLine.getReference< integer >( viewKeys.useNonblockingMPI );
+    domain.setupCommunications( useNonblockingMPI );
+    faceManager.setIsExternal();
+    edgeManager.setIsExternal( faceManager );
+  }
+
+
+//  MeshBody & meshBody = meshBodies.getGroup< MeshBody >( 0 );
+//
+//  GEOSX_THROW_IF_NE( meshBody.numSubGroups(), 1, InputError );
+//  MeshLevel & meshLevel = meshBody.getGroup< MeshLevel >( 0 );
+//
+//  FaceManager & faceManager = meshLevel.getFaceManager();
+//  EdgeManager & edgeManager = meshLevel.getEdgeManager();
+//
+//  Group const & commandLine = this->getGroup< Group >( groupKeys.commandLine );
+//  integer const useNonblockingMPI = commandLine.getReference< integer >( viewKeys.useNonblockingMPI );
+//  domain.setupCommunications( useNonblockingMPI );
+//  faceManager.setIsExternal();
+//  edgeManager.setIsExternal( faceManager );
 }
 
 
@@ -597,17 +616,17 @@ map< std::pair< string, string >, localIndex > ProblemManager::calculateRegionQu
       FiniteElementDiscretization const * const
       feDiscretization = feDiscretizationManager.getGroupPointer< FiniteElementDiscretization >( discretizationName );
 
-      for( localIndex a = 0; a < meshBodies.getSubGroups().size(); ++a )
+      for( localIndex a = 0; a < meshBodies.getSubGroups().size(); ++a ) // loop over mesh bodies
       {
         MeshBody & meshBody = meshBodies.getGroup< MeshBody >( a );
-        for( localIndex b = 0; b < meshBody.numSubGroups(); ++b )
+        for( localIndex b = 0; b < meshBody.numSubGroups(); ++b ) // loop over mesh levels (?)
         {
           MeshLevel & meshLevel = meshBody.getMeshLevel( b );
           NodeManager & nodeManager = meshLevel.getNodeManager();
           ElementRegionManager & elemManager = meshLevel.getElemManager();
           arrayView2d< real64 const, nodes::REFERENCE_POSITION_USD > const & X = nodeManager.referencePosition();
 
-          for( auto const & regionName : targetRegions )
+          for( auto const & regionName : targetRegions ) // loop over target regions, regionName is a string used as a key
           {
             ElementRegionBase & elemRegion = elemManager.getRegion( regionName );
 
