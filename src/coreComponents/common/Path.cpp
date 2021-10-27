@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2018-2020 Lawrence Livermore National Security LLC
  * Copyright (c) 2018-2020 The Board of Trustees of the Leland Stanford Junior University
- * Copyright (c) 2018-2020 Total, S.A
+ * Copyright (c) 2018-2020 TotalEnergies
  * Copyright (c) 2019-     GEOSX Contributors
  * All rights reserved
  *
@@ -13,7 +13,7 @@
  */
 
 #include "Path.hpp"
-#include "common/Logger.hpp"
+#include "Logger.hpp"
 
 #include <unistd.h>
 #include <sys/stat.h>
@@ -36,9 +36,11 @@ std::string getAbsolutePath( std::string const & path )
     char const * ret = getcwd( absFilePath, PATH_MAX + 1 );
     if( ret != nullptr )
     {
-      GEOSX_THROW( "Could not get the absolute path for " << path << " from " << absFilePath, InputError );
+      GEOSX_THROW( "Could not get the absolute path for " << path << " from working directory " << absFilePath
+                                                          << ". Common causes include the path/file doesn't exist, spelling errors, or incorrect permissions.", InputError );
     }
-    GEOSX_THROW( "Could not get the absolute path for " << path, InputError );
+    GEOSX_THROW( "Could not get the absolute path for " << path
+                                                        << ". Common causes include the path/file doesn't exist, spelling errors, or incorrect permissions.", InputError );
   }
 }
 

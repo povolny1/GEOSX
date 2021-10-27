@@ -40,7 +40,7 @@ the problems associated with the other interpolation methods (negative values).
 Parameters
 ======================
 
-The relative permeability constitutive model is listed in
+The relative permeability constitutive model is listed in the 
 ``<Constitutive>`` block of the input XML file.
 The relative permeability model must be assigned a unique name via
 ``name`` attribute.
@@ -50,7 +50,7 @@ node.
 
 The following attributes are supported:
 
-.. include:: /coreComponents/fileIO/schema/docs/BrooksCoreyBakerRelativePermeability.rst
+.. include:: /coreComponents/schema/docs/BrooksCoreyBakerRelativePermeability.rst
 
 Below are some comments on the model parameters.
 

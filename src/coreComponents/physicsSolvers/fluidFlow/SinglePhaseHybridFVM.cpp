@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2018-2020 Lawrence Livermore National Security LLC
  * Copyright (c) 2018-2020 The Board of Trustees of the Leland Stanford Junior University
- * Copyright (c) 2018-2020 Total, S.A
+ * Copyright (c) 2018-2020 TotalEnergies
  * Copyright (c) 2019-     GEOSX Contributors
  * All rights reserved
  *
@@ -19,12 +19,15 @@
 #include "SinglePhaseHybridFVM.hpp"
 
 #include "common/TimingMacros.hpp"
+#include "constitutive/ConstitutivePassThru.hpp"
 #include "constitutive/fluid/SingleFluidBase.hpp"
+#include "fieldSpecification/AquiferBoundaryCondition.hpp"
+#include "fieldSpecification/FieldSpecificationManager.hpp"
 #include "finiteVolume/HybridMimeticDiscretization.hpp"
 #include "finiteVolume/MimeticInnerProductDispatch.hpp"
-#include "mpiCommunications/CommunicationTools.hpp"
-#include "managers/GeosxState.hpp"
-#include "managers/ProblemManager.hpp"
+#include "mainInterface/ProblemManager.hpp"
+#include "mesh/mpiCommunications/CommunicationTools.hpp"
+
 
 /**
  * @namespace the geosx namespace that encapsulates the majority of the code
@@ -46,6 +49,7 @@ SinglePhaseHybridFVM::SinglePhaseHybridFVM( const string & name,
 
   // one cell-centered dof per cell
   m_numDofPerCell = 1;
+  m_linearSolverParameters.get().mgr.strategy = LinearSolverParameters::MGR::StrategyType::singlePhaseHybridFVM;
 
 }
 
@@ -72,14 +76,14 @@ void SinglePhaseHybridFVM::initializePreSubGroups()
 {
   SinglePhaseBase::initializePreSubGroups();
 
-  DomainPartition & domain = getGlobalState().getProblemManager().getDomainPartition();
+  DomainPartition & domain = this->getGroupByPath< DomainPartition >( "/Problem/domain" );
   NumericalMethodsManager const & numericalMethodManager = domain.getNumericalMethodManager();
   FiniteVolumeManager const & fvManager = numericalMethodManager.getFiniteVolumeManager();
 
-  if( !fvManager.hasGroup< HybridMimeticDiscretization >( m_discretizationName ) )
-  {
-    GEOSX_ERROR( "The HybridMimeticDiscretization must be selected with SinglePhaseHybridFVM" );
-  }
+  GEOSX_THROW_IF( !fvManager.hasGroup< HybridMimeticDiscretization >( m_discretizationName ),
+                  catalogName() << " " << getName() <<
+                  ": the HybridMimeticDiscretization must be selected with SinglePhaseHybridFVM",
+                  InputError );
 }
 
 void SinglePhaseHybridFVM::initializePostInitialConditionsPreSubGroups()
@@ -88,7 +92,7 @@ void SinglePhaseHybridFVM::initializePostInitialConditionsPreSubGroups()
 
   SinglePhaseBase::initializePostInitialConditionsPreSubGroups();
 
-  DomainPartition & domain = getGlobalState().getProblemManager().getDomainPartition();
+  DomainPartition & domain = this->getGroupByPath< DomainPartition >( "/Problem/domain" );
   MeshLevel const & mesh = domain.getMeshBody( 0 ).getMeshLevel( 0 );
   ElementRegionManager const & elemManager = mesh.getElemManager();
   FaceManager const & faceManager = mesh.getFaceManager();
@@ -115,8 +119,35 @@ void SinglePhaseHybridFVM::initializePostInitialConditionsPreSubGroups()
     minVal.min( transMultiplier[iface] );
   } );
 
-  GEOSX_ERROR_IF_LE_MSG( minVal.get(), 0.0,
-                         "The transmissibility multipliers used in SinglePhaseHybridFVM must strictly larger than 0.0" );
+  GEOSX_THROW_IF_LE_MSG( minVal.get(), 0.0,
+                         catalogName() << " " << getName() <<
+                         "The transmissibility multipliers used in SinglePhaseHybridFVM must strictly larger than 0.0",
+                         std::runtime_error );
+
+  FieldSpecificationManager & fsManager = FieldSpecificationManager::getInstance();
+  fsManager.apply( 0.0,
+                   domain,
+                   "faceManager",
+                   FlowSolverBase::viewKeyStruct::pressureString(),
+                   [&] ( FieldSpecificationBase const & bc,
+                         string const &,
+                         SortedArrayView< localIndex const > const &,
+                         Group &,
+                         string const & )
+  {
+    GEOSX_LOG_RANK_0( catalogName() << " " << getName() <<
+                      "A face Dirichlet boundary condition named " << bc.getName() << " was requested in the XML file. \n"
+                                                                                      "This type of boundary condition is not yet supported by SinglePhaseHybridFVM and will be ignored" );
+
+  } );
+
+  fsManager.forSubGroups< AquiferBoundaryCondition >( [&] ( AquiferBoundaryCondition const & bc )
+  {
+    GEOSX_LOG_RANK_0( catalogName() << " " << getName() <<
+                      "An aquifer boundary condition named " << bc.getName() << " was requested in the XML file. \n"
+                                                                                "This type of boundary condition is not yet supported by SinglePhaseHybridFVM and will be ignored" );
+  } );
+
 }
 
 void SinglePhaseHybridFVM::implicitStepSetup( real64 const & time_n,
@@ -137,7 +168,7 @@ void SinglePhaseHybridFVM::implicitStepSetup( real64 const & time_n,
     faceManager.getReference< array1d< real64 > >( viewKeyStruct::deltaFacePressureString() );
 
   // zero out the face pressures
-  dFacePres.setValues< parallelDevicePolicy<> >( 0.0 );
+  dFacePres.zero();
 }
 
 void SinglePhaseHybridFVM::implicitStepComplete( real64 const & time_n,
@@ -174,6 +205,7 @@ void SinglePhaseHybridFVM::setupDofs( DomainPartition const & GEOSX_UNUSED_PARAM
   // in AssembleOneSidedMassFluxes
   dofManager.addField( viewKeyStruct::pressureString(),
                        DofManager::Location::Elem,
+                       1,
                        targetRegionNames() );
 
   dofManager.addCoupling( viewKeyStruct::pressureString(),
@@ -183,6 +215,7 @@ void SinglePhaseHybridFVM::setupDofs( DomainPartition const & GEOSX_UNUSED_PARAM
   // setup the connectivity of face fields
   dofManager.addField( viewKeyStruct::facePressureString(),
                        DofManager::Location::Face,
+                       1,
                        targetRegionNames() );
 
   dofManager.addCoupling( viewKeyStruct::facePressureString(),
@@ -192,8 +225,7 @@ void SinglePhaseHybridFVM::setupDofs( DomainPartition const & GEOSX_UNUSED_PARAM
   // setup coupling between pressure and face pressure
   dofManager.addCoupling( viewKeyStruct::facePressureString(),
                           viewKeyStruct::pressureString(),
-                          DofManager::Connector::Elem,
-                          true );
+                          DofManager::Connector::Elem );
 }
 
 void SinglePhaseHybridFVM::assembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( time_n ),
@@ -268,6 +300,9 @@ void SinglePhaseHybridFVM::assembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( t
     SingleFluidBase const & fluid =
       getConstitutiveModel< SingleFluidBase >( subRegion, m_fluidModelNames[targetIndex] );
 
+    PermeabilityBase const & permeabilityModel =
+      getConstitutiveModel< PermeabilityBase >( subRegion, m_permeabilityModelNames[targetIndex] );
+
     mimeticInnerProductDispatch( mimeticInnerProductBase,
                                  [&] ( auto const mimeticInnerProduct )
     {
@@ -278,6 +313,7 @@ void SinglePhaseHybridFVM::assembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( t
                                                    esr,
                                                    subRegion,
                                                    fluid,
+                                                   permeabilityModel,
                                                    m_regionFilter.toViewConst(),
                                                    nodePosition,
                                                    elemRegionList,
@@ -302,6 +338,43 @@ void SinglePhaseHybridFVM::assembleFluxTerms( real64 const GEOSX_UNUSED_PARAM( t
   } );
 }
 
+void SinglePhaseHybridFVM::assemblePoroelasticFluxTerms( real64 const time_n,
+                                                         real64 const dt,
+                                                         DomainPartition const & domain,
+                                                         DofManager const & dofManager,
+                                                         CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                                                         arrayView1d< real64 > const & localRhs,
+                                                         string const & jumpDofKey )
+{
+  GEOSX_UNUSED_VAR ( jumpDofKey );
+
+  assembleFluxTerms( time_n,
+                     dt,
+                     domain,
+                     dofManager,
+                     localMatrix,
+                     localRhs );
+}
+
+void SinglePhaseHybridFVM::assembleHydrofracFluxTerms( real64 const time_n,
+                                                       real64 const dt,
+                                                       DomainPartition const & domain,
+                                                       DofManager const & dofManager,
+                                                       CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                                                       arrayView1d< real64 > const & localRhs,
+                                                       CRSMatrixView< real64, localIndex const > const & dR_dAper )
+{
+  GEOSX_UNUSED_VAR ( time_n );
+  GEOSX_UNUSED_VAR ( dt );
+  GEOSX_UNUSED_VAR ( domain );
+  GEOSX_UNUSED_VAR ( dofManager );
+  GEOSX_UNUSED_VAR ( localMatrix );
+  GEOSX_UNUSED_VAR ( localRhs );
+  GEOSX_UNUSED_VAR ( dR_dAper );
+
+  GEOSX_ERROR( "Poroelastic fluxes with conforming fractures not yet implemented." );
+}
+
 void SinglePhaseHybridFVM::applyBoundaryConditions( real64 const time_n,
                                                     real64 const dt,
                                                     DomainPartition & domain,
@@ -312,6 +385,27 @@ void SinglePhaseHybridFVM::applyBoundaryConditions( real64 const time_n,
   GEOSX_MARK_FUNCTION;
 
   SinglePhaseBase::applyBoundaryConditions( time_n, dt, domain, dofManager, localMatrix, localRhs );
+}
+
+void SinglePhaseHybridFVM::applyAquiferBC( real64 const time,
+                                           real64 const dt,
+                                           DomainPartition & domain,
+                                           DofManager const & dofManager,
+                                           CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                                           arrayView1d< real64 > const & localRhs ) const
+{
+  GEOSX_MARK_FUNCTION;
+
+  GEOSX_UNUSED_VAR( time, dt, dofManager, domain, localMatrix, localRhs );
+}
+
+void SinglePhaseHybridFVM::saveAquiferConvergedState( real64 const & time,
+                                                      real64 const & dt,
+                                                      DomainPartition & domain )
+{
+  GEOSX_MARK_FUNCTION;
+
+  GEOSX_UNUSED_VAR( time, dt, domain );
 }
 
 
@@ -344,24 +438,30 @@ real64 SinglePhaseHybridFVM::calculateResidualNorm( DomainPartition const & doma
   localIndex subRegionCounter = 0;
 
   forTargetSubRegions( mesh, [&]( localIndex const targetIndex,
-                                  ElementSubRegionBase const & subRegion )
+                                  auto const & subRegion )
   {
 
-    arrayView1d< globalIndex const > const & elemDofNumber = subRegion.getReference< array1d< globalIndex > >( elemDofKey );
+    arrayView1d< globalIndex const > const & elemDofNumber = subRegion.template getReference< array1d< globalIndex > >( elemDofKey );
     arrayView1d< integer const > const & elemGhostRank = subRegion.ghostRank();
-    arrayView1d< real64 const > const & refPoro = subRegion.getReference< array1d< real64 > >( viewKeyStruct::referencePorosityString() );
     arrayView1d< real64 const > const & volume = subRegion.getElementVolume();
-    arrayView1d< real64 const > const & densOld = subRegion.getReference< array1d< real64 > >( viewKeyStruct::densityOldString() );
+    arrayView1d< real64 const > const & densOld = subRegion.template getReference< array1d< real64 > >( viewKeyStruct::densityOldString() );
 
-    SinglePhaseBaseKernels::ResidualNormKernel::launch< parallelDevicePolicy<>,
-                                                        parallelDeviceReduce >( localRhs,
-                                                                                rankOffset,
-                                                                                elemDofNumber,
-                                                                                elemGhostRank,
-                                                                                refPoro,
-                                                                                volume,
-                                                                                densOld,
-                                                                                localResidualNorm );
+    ConstitutiveBase const & solidModel = subRegion.template getConstitutiveModel< ConstitutiveBase >( m_solidModelNames[targetIndex] );
+
+    constitutive::ConstitutivePassThru< CompressibleSolidBase >::execute( solidModel, [=, &localResidualNorm] ( auto & castedSolidModel )
+    {
+      arrayView2d< real64 const > const & porosityOld = castedSolidModel.getOldPorosity();
+
+      SinglePhaseBaseKernels::ResidualNormKernel::launch< parallelDevicePolicy<>,
+                                                          parallelDeviceReduce >( localRhs,
+                                                                                  rankOffset,
+                                                                                  elemDofNumber,
+                                                                                  elemGhostRank,
+                                                                                  volume,
+                                                                                  densOld,
+                                                                                  porosityOld,
+                                                                                  localResidualNorm );
+    } );
 
     SingleFluidBase const & fluid = getConstitutiveModel< SingleFluidBase >( subRegion, m_fluidModelNames[targetIndex] );
     defaultViscosity += fluid.defaultViscosity();
@@ -517,13 +617,7 @@ void SinglePhaseHybridFVM::applySystemSolution( DofManager const & dofManager,
   fieldNames["face"].emplace_back( string( viewKeyStruct::deltaFacePressureString() ) );
   fieldNames["elems"].emplace_back( string( viewKeyStruct::deltaPressureString() ) );
 
-  getGlobalState().getCommunicationTools().synchronizeFields( fieldNames, mesh, domain.getNeighbors(), true );
-
-  forTargetSubRegions( mesh, [&]( localIndex const targetIndex,
-                                  ElementSubRegionBase & subRegion )
-  {
-    updateState( subRegion, targetIndex );
-  } );
+  CommunicationTools::getInstance().synchronizeFields( fieldNames, mesh, domain.getNeighbors(), true );
 }
 
 
@@ -541,7 +635,7 @@ void SinglePhaseHybridFVM::resetStateToBeginningOfStep( DomainPartition & domain
     faceManager.getReference< array1d< real64 > >( viewKeyStruct::deltaFacePressureString() );
 
   // zero out the face pressures
-  dFacePres.setValues< parallelDevicePolicy<> >( 0.0 );
+  dFacePres.zero();
 }
 
 REGISTER_CATALOG_ENTRY( SolverBase, SinglePhaseHybridFVM, string const &, Group * const )

@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2018-2020 Lawrence Livermore National Security LLC
  * Copyright (c) 2018-2020 The Board of Trustees of the Leland Stanford Junior University
- * Copyright (c) 2018-2020 Total, S.A
+ * Copyright (c) 2018-2020 TotalEnergies
  * Copyright (c) 2019-     GEOSX Contributors
  * All rights reserved
  *
@@ -16,8 +16,8 @@
  * @file UnitTestUtilities.hpp
  */
 
-#ifndef GEOSX_CODINGUTILITIES_UNITTESTUTILITIES_HPP
-#define GEOSX_CODINGUTILITIES_UNITTESTUTILITIES_HPP
+#ifndef GEOSX_CODINGUTILITIES_UNITTESTUTILITIES_HPP_
+#define GEOSX_CODINGUTILITIES_UNITTESTUTILITIES_HPP_
 
 #include "gtest/gtest.h"
 
@@ -58,7 +58,7 @@ namespace geosx
 namespace testing
 {
 
-constexpr real64 DEFAULT_ABS_TOL = 1E-13;
+constexpr real64 DEFAULT_ABS_TOL = 1E-12;
 constexpr real64 DEFAULT_REL_TOL = std::numeric_limits< real64 >::epsilon();
 
 ::testing::AssertionResult checkRelativeErrorFormat( const char *, const char *, const char *, const char *,
@@ -183,8 +183,8 @@ void compareLocalMatrices( CRSMatrixView< T const, COL_INDEX const > const & mat
   ASSERT_EQ( matrix1.numRows(), matrix2.numRows() );
   ASSERT_EQ( matrix1.numColumns(), matrix2.numColumns() );
 
-  matrix1.move( LvArray::MemorySpace::CPU, false );
-  matrix2.move( LvArray::MemorySpace::CPU, false );
+  matrix1.move( LvArray::MemorySpace::host, false );
+  matrix2.move( LvArray::MemorySpace::host, false );
 
   // check the accuracy across local rows
   for( localIndex i = 0; i < matrix1.numRows(); ++i )
@@ -199,4 +199,4 @@ void compareLocalMatrices( CRSMatrixView< T const, COL_INDEX const > const & mat
 
 } // namespace geosx
 
-#endif //GEOSX_CODINGUTILITIES_UNITTESTUTILITIES_HPP
+#endif //GEOSX_CODINGUTILITIES_UNITTESTUTILITIES_HPP_

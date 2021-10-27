@@ -90,7 +90,7 @@ Like any solver, time stepping is driven by events, see :ref:`EventManager`.
 
 The following attributes are supported:
 
-.. include:: /coreComponents/fileIO/schema/docs/SinglePhaseFVM.rst
+.. include:: /coreComponents/schema/docs/SinglePhaseFVM.rst
 
 In particular:
 
@@ -107,7 +107,7 @@ must be prescribed on this field on cell or face sets of interest.
 Example
 =========================
 
-.. literalinclude:: ../integratedTests/singlePhaseFlow/3D_10x10x10_compressible.xml
+.. literalinclude:: ../../../../../inputFiles/singlePhaseFlow/3D_10x10x10_compressible_base.xml
   :language: xml
   :start-after: <!-- SPHINX_TUT_INT_HEX_SOLVERS -->
   :end-before: <!-- SPHINX_TUT_INT_HEX_SOLVERS_END -->

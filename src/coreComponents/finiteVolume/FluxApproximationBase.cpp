@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2018-2020 Lawrence Livermore National Security LLC
  * Copyright (c) 2018-2020 The Board of Trustees of the Leland Stanford Junior University
- * Copyright (c) 2018-2020 Total, S.A
+ * Copyright (c) 2018-2020 TotalEnergies
  * Copyright (c) 2019-     GEOSX Contributors
  * All rights reserved
  *
@@ -19,10 +19,9 @@
 
 #include "FluxApproximationBase.hpp"
 
-#include "managers/GeosxState.hpp"
-#include "managers/ProblemManager.hpp"
-#include "managers/FieldSpecification/FieldSpecificationManager.hpp"
-#include "mpiCommunications/CommunicationTools.hpp"
+#include "fieldSpecification/FieldSpecificationManager.hpp"
+#include "fieldSpecification/AquiferBoundaryCondition.hpp"
+#include "mesh/mpiCommunications/CommunicationTools.hpp"
 
 namespace geosx
 {
@@ -47,6 +46,10 @@ FluxApproximationBase::FluxApproximationBase( string const & name, Group * const
     setInputFlag( InputFlags::OPTIONAL ).
     setDescription( "List of regions to build the stencil for" );
 
+  registerWrapper( viewKeyStruct::coefficientModelNamesString(), &m_coefficientModelNames ).
+    setInputFlag( InputFlags::OPTIONAL ).
+    setDescription( "List of constitutive models that contain the coefficient used to build the stencil" );
+
   registerWrapper( viewKeyStruct::areaRelativeToleranceString(), &m_areaRelTol ).
     setInputFlag( InputFlags::OPTIONAL ).
     setApplyDefaultValue( 1.0e-8 ).
@@ -62,7 +65,7 @@ FluxApproximationBase::getCatalog()
 
 void FluxApproximationBase::registerDataOnMesh( Group & meshBodies )
 {
-  FieldSpecificationManager & fsManager = getGlobalState().getFieldSpecificationManager();
+  FieldSpecificationManager & fsManager = FieldSpecificationManager::getInstance();
   meshBodies.forSubGroups< MeshBody >( [&]( MeshBody & meshBody )
   {
     meshBody.forSubGroups< MeshLevel >( [&]( MeshLevel & mesh )
@@ -78,10 +81,13 @@ void FluxApproximationBase::registerDataOnMesh( Group & meshBodies )
                              stencilParentGroup.registerGroup( getName() );
 
       registerCellStencil( stencilGroup );
+
       registerFractureStencil( stencilGroup );
-      // For each face-based boundary condition on target field, create a boundary stencil
+
+      // For each face-based Dirichlet boundary condition on target field, create a boundary stencil
+      // TODO: Apply() should take a MeshLevel directly
       fsManager.apply( 0.0,
-                       dynamicCast< DomainPartition & >( meshBodies.getParent() ), // TODO: Apply() should take a MeshLevel directly
+                       dynamicCast< DomainPartition & >( meshBodies.getParent() ),
                        "faceManager",
                        m_fieldName,
                        [&] ( FieldSpecificationBase const &,
@@ -91,6 +97,20 @@ void FluxApproximationBase::registerDataOnMesh( Group & meshBodies )
                              string const & )
       {
         registerBoundaryStencil( stencilGroup, setName );
+      } );
+
+      // For each aquifer boundary condition, create a boundary stencil
+      fsManager.apply< AquiferBoundaryCondition >( 0.0,
+                                                   dynamicCast< DomainPartition & >( meshBodies.getParent() ),
+                                                   "faceManager",
+                                                   AquiferBoundaryCondition::catalogName(),
+                                                   [&] ( AquiferBoundaryCondition const &,
+                                                         string const & setName,
+                                                         SortedArrayView< localIndex const > const &,
+                                                         Group const &,
+                                                         string const & )
+      {
+        registerAquiferStencil( stencilGroup, setName );
       } );
 
       FaceManager & faceManager = mesh.getFaceManager();
@@ -108,8 +128,8 @@ void FluxApproximationBase::initializePostInitialConditionsPreSubGroups()
 {
   GEOSX_MARK_FUNCTION;
 
-  DomainPartition & domain = getGlobalState().getProblemManager().getDomainPartition();
-  FieldSpecificationManager & fsManager = getGlobalState().getFieldSpecificationManager();
+  DomainPartition & domain = this->getGroupByPath< DomainPartition >( "/Problem/domain" );
+  FieldSpecificationManager & fsManager = FieldSpecificationManager::getInstance();
 
   domain.getMeshBodies().forSubGroups< MeshBody >( [&]( MeshBody & meshBody )
   {
@@ -120,7 +140,7 @@ void FluxApproximationBase::initializePostInitialConditionsPreSubGroups()
       // Compute the main cell-based stencil
       computeCellStencil( mesh );
 
-      // For each face-based boundary condition on target field, create a boundary stencil
+      // For each face-based boundary condition on target field, compute the boundary stencil weights
       fsManager.apply( 0.0,
                        domain,
                        "faceManager",
@@ -133,6 +153,10 @@ void FluxApproximationBase::initializePostInitialConditionsPreSubGroups()
       {
         computeBoundaryStencil( mesh, setName, faceSet );
       } );
+
+      // Compute the aquifer stencil weights
+      computeAquiferStencil( domain, mesh );
+
     } );
   } );
 }

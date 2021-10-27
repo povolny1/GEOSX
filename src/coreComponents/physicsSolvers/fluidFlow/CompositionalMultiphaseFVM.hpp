@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2018-2020 Lawrence Livermore National Security LLC
  * Copyright (c) 2018-2020 The Board of Trustees of the Leland Stanford Junior University
- * Copyright (c) 2018-2020 Total, S.A
+ * Copyright (c) 2018-2020 TotalEnergies
  * Copyright (c) 2019-     GEOSX Contributors
  * All rights reserved
  *
@@ -23,16 +23,6 @@
 
 namespace geosx
 {
-
-namespace dataRepository
-{
-class Group;
-}
-
-namespace constitutive
-{
-class MultiFluidBase;
-}
 
 /**
  * @class CompositionalMultiphaseFVM
@@ -116,17 +106,14 @@ public:
                        real64 const scalingFactor,
                        DomainPartition & domain ) override;
 
+  virtual void
+  implicitStepComplete( real64 const & time,
+                        real64 const & dt,
+                        DomainPartition & domain ) override;
+
+
   /**@}*/
 
-  /**
-   * @brief assembles the flux terms for all cells
-   * @param time_n previous time value
-   * @param dt time step
-   * @param domain the physical domain object
-   * @param dofManager degree-of-freedom manager associated with the linear system
-   * @param matrix the system matrix
-   * @param rhs the system right-hand side vector
-   */
   virtual void
   assembleFluxTerms( real64 const dt,
                      DomainPartition const & domain,
@@ -135,12 +122,26 @@ public:
                      arrayView1d< real64 > const & localRhs ) const override;
 
 
-  /**
-   * @brief Recompute phase mobility from constitutive and primary variables
-   * @param domain the domain containing the mesh and fields
-   */
   virtual void
   updatePhaseMobility( Group & dataGroup, localIndex const targetIndex ) const override;
+
+  virtual void
+  applyAquiferBC( real64 const time,
+                  real64 const dt,
+                  DofManager const & dofManager,
+                  DomainPartition & domain,
+                  CRSMatrixView< real64, globalIndex const > const & localMatrix,
+                  arrayView1d< real64 > const & localRhs ) const override;
+
+
+  /**
+   * @brief Compute the largest CFL number in the domain
+   * @param dt the time step size
+   * @param domain the domain containing the mesh and fields
+   */
+  void
+  computeCFLNumbers( real64 const & dt, DomainPartition & domain );
+
 
   virtual void initializePreSubGroups() override;
 

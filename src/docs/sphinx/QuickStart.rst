@@ -189,16 +189,10 @@ This submodule is not required for building GEOSX. If you see an error message h
 .. code-block:: sh
 
    cd GEOSX
-   git submodule init src/coreComponents/LvArray
-   git submodule init src/coreComponents/fileIO/coupling/hdf5_interface
-   git submodule init src/coreComponents/physicsSolvers/GEOSX_PTP
-   git submodule init src/externalComponents/PAMELA
-   git submodule init src/externalComponents/PVTPackage
-   git submodule update src/coreComponents/LvArray
-   git submodule update src/coreComponents/fileIO/coupling/hdf5_interface
-   git submodule update src/coreComponents/physicsSolvers/GEOSX_PTP
-   git submodule update src/externalComponents/PAMELA
-   git submodule update src/externalComponents/PVTPackage
+   git submodule update --init src/coreComponents/LvArray
+   git submodule update --init src/coreComponents/fileIO/coupling/hdf5_interface
+   git submodule update --init src/externalComponents/PAMELA
+   git submodule update --init src/externalComponents/PVTPackage
    cd ..
 
 Once we have grabbed GEOSX, we do the same for the thirdPartyLibs repository.  From the ``codes`` directory, type
@@ -337,9 +331,21 @@ Again, the ``config-build.py`` sets up cmake for you, so the process is very sim
    make -j4
    make install
 
-Here, the parallel ``make -j 4`` will use four processes for compilation, which can substantially speed up the build if you have a multi-processor machine.
+The host-config file is the place to set all relevant configuration options.  
+Note that the path to the previously installed third party libraries is typically specified within this file.  
+An alternative is to set the path ``GEOSX_TPL_DIR`` via a cmake command line option, e.g. 
+
+.. code-block:: sh
+
+   python scripts/config-build.py -hc host-configs/your-platform.cmake -bt Release -D GEOSX_TPL_DIR=/full/path/to/thirdPartyLibs
+
+We highly recommend using full paths, rather than relative paths, whenever possible.
+The parallel ``make -j 4`` will use four processes for compilation, which can substantially speed up the build if you have a multi-processor machine.
 You can adjust this value to match the number of processors available on your machine.
 The ``make install`` command then installs GEOSX to a default location unless otherwise specified.
+
+
+
 If all goes well, a ``geosx`` executable should now be available:
 
 .. code-block:: sh
