@@ -380,6 +380,7 @@ void ProblemManager::parseInputFile()
 
   string::size_type const pos=inputFileName.find_last_of( '/' );
   string path = inputFileName.substr( 0, pos + 1 );
+  //std::cout << "Input file path: " << path << std::endl; // DEBUGGING
   xmlDocument.append_child( xmlWrapper::filePathString ).append_attribute( xmlWrapper::filePathString ) = path.c_str();
   xmlProblemNode = xmlDocument.child( this->getName().c_str());
   processInputFileRecursive( xmlProblemNode );
@@ -390,13 +391,23 @@ void ProblemManager::parseInputFile()
     xmlWrapper::xmlNode topLevelNode = xmlProblemNode.child( constitutiveManager.getName().c_str());
     constitutiveManager.processInputFileRecursive( topLevelNode );
 
+    //Group & meshBodies = domain.getMeshBodies(); // DEBUGGING
+    //std::cout << "Number of mesh bodies: " << meshBodies.getSubGroups().size() << std::endl; // DEBUGGING
+
     // Open mesh levels
     MeshManager & meshManager = this->getGroup< MeshManager >( groupKeys.meshManager );
     meshManager.generateMeshLevels( domain );
-    ElementRegionManager & elementManager = domain.getMeshBody( 0 ).getMeshLevel( 0 ).getElemManager();
-    topLevelNode = xmlProblemNode.child( elementManager.getName().c_str());
-    elementManager.processInputFileRecursive( topLevelNode );
 
+    //Group & meshBodies = domain.getMeshBodies(); // DEBUGGING
+    //std::cout << "Number of mesh bodies: " << meshBodies.getSubGroups().size() << std::endl; // DEBUGGING
+
+    for( localIndex a = 0; a < domain.getMeshBodies().getSubGroups().size(); ++a )
+    {
+      ElementRegionManager & elementManager = domain.getMeshBody( a ).getMeshLevel( 0 ).getElemManager();
+      topLevelNode = xmlProblemNode.child( elementManager.getName().c_str());
+      std::cout << "Top level node: " << elementManager.getName().c_str() << std::endl; // DEBUGGING
+      elementManager.processInputFileRecursive( topLevelNode );
+    }
   }
 }
 
@@ -497,14 +508,18 @@ void ProblemManager::generateMesh()
   for( localIndex a = 0; a < meshBodies.numSubGroups(); ++a )
   {
     MeshBody & meshBody = meshBodies.getGroup< MeshBody >( a );
+    std::cout << "Current mesh body (generateMesh): " << meshBody.getName() << std::endl; // DEBUGGING
     for( localIndex b = 0; b < meshBody.numSubGroups(); ++b )
     {
       MeshLevel & meshLevel = meshBody.getGroup< MeshLevel >( b );
+      std::cout << "Current mesh level (generateMesh): " << meshLevel.getName() << std::endl; // DEBUGGING
 
       NodeManager & nodeManager = meshLevel.getNodeManager();
       EdgeManager & edgeManager = meshLevel.getEdgeManager();
       FaceManager & faceManager = meshLevel.getFaceManager();
       ElementRegionManager & elemManager = meshLevel.getElemManager();
+
+      std::cout << "Number of regions (generateMesh): " << elemManager.numRegions() << std::endl;
 
       GeometricObjectManager & geometricObjects = this->getGroup< GeometricObjectManager >( groupKeys.geometricObjectManager );
 
@@ -546,20 +561,20 @@ void ProblemManager::generateMesh()
 	  GEOSX_THROW_IF_NE( meshBodies.numSubGroups(), 1, InputError );
   }
 
+  Group const & commandLine = this->getGroup< Group >( groupKeys.commandLine );
+  integer const useNonblockingMPI = commandLine.getReference< integer >( viewKeys.useNonblockingMPI );
+  domain.setupCommunications( useNonblockingMPI );
+
   for( localIndex a = 0; a < meshBodies.getSubGroups().size(); ++a ) // loop over mesh bodies
   {
     MeshBody & meshBody = meshBodies.getGroup< MeshBody >( a );
 
     GEOSX_THROW_IF_NE( meshBody.numSubGroups(), 1, InputError );
-    MeshLevel & meshLevel = meshBody.getGroup< MeshLevel >( a ); // is index "a" correct? or should there be an additional loop over mesh sublevels?
+    MeshLevel & meshLevel = meshBody.getGroup< MeshLevel >( 0 );
 
     FaceManager & faceManager = meshLevel.getFaceManager();
     EdgeManager & edgeManager = meshLevel.getEdgeManager();
 
-    // idk if this stuff is supposed to be executed for all mesh bodies/levels
-    Group const & commandLine = this->getGroup< Group >( groupKeys.commandLine );
-    integer const useNonblockingMPI = commandLine.getReference< integer >( viewKeys.useNonblockingMPI );
-    domain.setupCommunications( useNonblockingMPI );
     faceManager.setIsExternal();
     edgeManager.setIsExternal( faceManager );
   }
@@ -601,13 +616,15 @@ map< std::pair< string, string >, localIndex > ProblemManager::calculateRegionQu
 
   map< std::pair< string, string >, localIndex > regionQuadrature;
 
-  for( localIndex solverIndex=0; solverIndex<m_physicsSolverManager->numSubGroups(); ++solverIndex )
+  for( localIndex solverIndex=0; solverIndex<m_physicsSolverManager->numSubGroups(); ++solverIndex ) // loop over solvers
   {
+    std::cout << "Accessing solver: " << solverIndex << std::endl; // DEBUGGING
     SolverBase const * const solver = m_physicsSolverManager->getGroupPointer< SolverBase >( solverIndex );
 
     if( solver != nullptr )
     {
       string const discretizationName = solver->getDiscretization();
+      std::cout << "Accessing discretization: " << discretizationName << std::endl; // DEBUGGING
       arrayView1d< string const > const & targetRegions = solver->targetRegionNames();
 
       FiniteElementDiscretizationManager const &
@@ -619,15 +636,22 @@ map< std::pair< string, string >, localIndex > ProblemManager::calculateRegionQu
       for( localIndex a = 0; a < meshBodies.getSubGroups().size(); ++a ) // loop over mesh bodies
       {
         MeshBody & meshBody = meshBodies.getGroup< MeshBody >( a );
-        for( localIndex b = 0; b < meshBody.numSubGroups(); ++b ) // loop over mesh levels (?)
+        std::cout << "Accessing mesh body: " << a << std::endl; // DEBUGGING
+
+        for( localIndex b = 0; b < meshBody.numSubGroups(); ++b ) // loop over mesh levels
         {
           MeshLevel & meshLevel = meshBody.getMeshLevel( b );
+          std::cout << "Accessing mesh level: " << b << std::endl; // DEBUGGING
           NodeManager & nodeManager = meshLevel.getNodeManager();
           ElementRegionManager & elemManager = meshLevel.getElemManager();
           arrayView2d< real64 const, nodes::REFERENCE_POSITION_USD > const & X = nodeManager.referencePosition();
 
           for( auto const & regionName : targetRegions ) // loop over target regions, regionName is a string used as a key
           {
+            std::cout << "Accessing target regions: " << regionName << std::endl; // DEBUGGING
+
+            // Currently (10/22/2021), GEOSx loops over all of a solver's target regions for each mesh body because its been assumed during development that a given solver goes with a given mesh body, and any regional decomposition will happen thereafter.
+            // For MPM we would like there to be an "awareness" of the fact that not every mesh body includes every target region. Thus, we need a way to check which target regions are in which mesh body.
             ElementRegionBase & elemRegion = elemManager.getRegion( regionName );
 
             if( feDiscretization != nullptr )
@@ -635,6 +659,7 @@ map< std::pair< string, string >, localIndex > ProblemManager::calculateRegionQu
               elemRegion.forElementSubRegions< CellElementSubRegion, FaceElementSubRegion >( [&]( auto & subRegion )
               {
                 string const elementTypeString = subRegion.getElementTypeString();
+                std::cout << "Element type in this target region: " << elementTypeString << std::endl; // DEBUGGING
 
                 std::unique_ptr< finiteElement::FiniteElementBase > newFE = feDiscretization->factory( elementTypeString );
 
@@ -642,8 +667,7 @@ map< std::pair< string, string >, localIndex > ProblemManager::calculateRegionQu
                 fe = subRegion.template registerWrapper< finiteElement::FiniteElementBase >( discretizationName, std::move( newFE ) ).
                        setRestartFlags( dataRepository::RestartFlags::NO_WRITE ).reference();
 
-                finiteElement::dispatch3D( fe,
-                                           [&] ( auto & finiteElement )
+                finiteElement::dispatch3D( fe, [&] ( auto & finiteElement )
                 {
                   using FE_TYPE = std::remove_const_t< TYPEOFREF( finiteElement ) >;
 
@@ -651,8 +675,7 @@ map< std::pair< string, string >, localIndex > ProblemManager::calculateRegionQu
 
                   feDiscretization->calculateShapeFunctionGradients( X, &subRegion, finiteElement );
 
-                  localIndex & numQuadraturePointsInList = regionQuadrature[ std::make_pair( regionName,
-                                                                                             subRegion.getName() ) ];
+                  localIndex & numQuadraturePointsInList = regionQuadrature[ std::make_pair( regionName, subRegion.getName() ) ];
 
                   numQuadraturePointsInList = std::max( numQuadraturePointsInList, numQuadraturePoints );
                 } );
